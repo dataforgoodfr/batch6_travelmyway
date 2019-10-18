@@ -6,7 +6,7 @@ import io
 import TMW as tmw
 from datetime import datetime as dt
 from geopy.distance import distance
-
+import tmw_api_keys
 
 pd.set_option('display.max_columns', 999)
 pd.set_option('display.width', 1000)
@@ -116,6 +116,9 @@ def skyscanner_journeys(df_response, _id=0):
                           steps = lst_sections)
         lst_journeys.append(journey_sky)
 
+        for journey in lst_journeys:
+            journey.update()
+
     return lst_journeys
 
 
@@ -141,7 +144,7 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
 
     headers = {
         'x-rapidapi-host': "skyscanner-skyscanner-flight-search-v1.p.rapidapi.com",
-        'x-rapidapi-key': "c8568b20bdmsha7927470ad4afdbp13559djsn5c9a0c383cc2",
+        'x-rapidapi-key': tmw_api_keys.SKYSCANNER_API_KEY,
         'content-type': "application/x-www-form-urlencoded"
     }
     # create session
@@ -154,7 +157,7 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
 
     headers = {
         'x-rapidapi-host': "skyscanner-skyscanner-flight-search-v1.p.rapidapi.com",
-        'x-rapidapi-key': "c8568b20bdmsha7927470ad4afdbp13559djsn5c9a0c383cc2"
+        'x-rapidapi-key': tmw_api_keys.SKYSCANNER_API_KEY
     }
 
     response = requests.request("GET", url, headers=headers, params=querystring)
@@ -308,9 +311,12 @@ def main(departure='CDG-sky', arrival='TXL-sky', departure_date='2019-11-10'):
             }
     }
     tmp = skyscanner_query_directions(json_query)
+    rep = list()
     for i in tmp:
         print(i.to_json())
+        rep.append(i.to_json())
 
+    return rep
 
 
 
