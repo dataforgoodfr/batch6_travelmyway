@@ -60,48 +60,57 @@ def skyscanner_journeys(df_response, _id=0):
 
     # all itineraries :
     for itinerary_id in df_response.itinerary_id.unique():
-        itinerary = df_response[df_response.itinerary_id==itinerary_id]
+        itinerary = df_response[df_response.itinerary_id == itinerary_id]
         i = _id
         lst_sections = list()
         # We add a waiting period at the airport of 2 hours
+        print(itinerary.shape)
+        print(type(itinerary.geoloc))
+        print(itinerary.geoloc)
+        print(itinerary.geoloc.iloc[0])
         step = tmw.journey_step(i,
-                        _type='Waiting',
-                        label='',
-                        distance_m=0,
-                        duration_s=_AIRPORT_WAITING_PERIOD,
-                        price_EUR=[0],
-                        gCO2=0,
-                        geojson=[],
-                        )
+                                _type='Waiting',
+                                label='',
+                                distance_m=0,
+                                duration_s=_AIRPORT_WAITING_PERIOD,
+                                price_EUR=[0],
+                                gCO2=0,
+                                departure_point=itinerary.geoloc.iloc[0],
+                                arrival_point=itinerary.geoloc.iloc[0],
+                                geojson=[],
+                                )
         lst_sections.append(step)
         i = i + 1
         for index, leg in itinerary.sort_values(by = 'DepartureDateTime').iterrows():
             step = tmw.journey_step(i,
-                        _type='Flight',
-                        label='',
-                        distance_m=leg.distance_step,
-                        duration_s=leg.Duration_seg * 60,
-                        price_EUR=[leg.price_step],
-                        gCO2=0,
-                        geojson=[],
-                        )
+                                    _type='Flight',
+                                    label='',
+                                    distance_m=leg.distance_step,
+                                    duration_s=leg.Duration_seg * 60,
+                                    price_EUR=[leg.price_step],
+                                    gCO2=0,
+                                    departure_point = leg.geoloc_origin_seg,
+                                    arrival_point = itinerary.geoloc_destination_seg,
+                                    geojson=[],
+                                    )
             lst_sections.append(step)
             i = i+1
             # add transfert steps
             if not pd.isna(leg.next_departure):
                 step = tmw.journey_step(i,
-                                    _type='Transfert',
-                                    label='',
-                                    distance_m=0,
-                                    duration_s=(dt.strptime(leg['next_departure'], '%Y-%m-%dT%H:%M:%S') - dt.strptime(leg['ArrivalDateTime'],
-                                                                                      '%Y-%m-%dT%H:%M:%S')).seconds,
-                                    price_EUR=[0],
-                                    gCO2=0,
-                                    geojson=[],
-                                    )
+                                        _type='Transfert',
+                                        label='',
+                                        distance_m=0,
+                                        duration_s=(dt.strptime(leg['next_departure'], '%Y-%m-%dT%H:%M:%S') - dt.strptime(leg['ArrivalDateTime'],
+                                                                                          '%Y-%m-%dT%H:%M:%S')).seconds,
+                                        price_EUR=[0],
+                                        departure_point=leg.geoloc_destination_seg,
+                                        arrival_point=itinerary.geoloc_destination_seg,
+                                        gCO2=0,
+                                        geojson=[],
+                                        )
                 lst_sections.append(step)
                 i = i+1
-
 
         journey_sky = tmw.journey(_id,
                           steps = lst_sections)
@@ -286,7 +295,7 @@ def pandas_explode(df, column_to_explode):
     return return_df
 
 
-def main(departure = 'CDG-sky', arrival = 'TXL-sky', departure_date = '2019-11-10'):
+def main(departure='CDG-sky', arrival='TXL-sky', departure_date='2019-11-10'):
     json_query = {
         'query':{
             'start':{
