@@ -10,8 +10,10 @@ class journey:
         self.total_duration = 0
         self.total_price_EUR = 0
         self.total_gCO2 = 0
+        self.departure_point = [0, 0]
+        self.arrival_point = [0, 0]
         self.steps = steps
-    
+
     def add(self, steps=[]):
         self.steps.append(steps)
     
@@ -56,7 +58,7 @@ class journey:
         return _map
     
 class journey_step:
-    def __init__(self, _id, _type, label='', distance_m=0, duration_s=0, price_EUR=[0.0], gCO2 = 0, geojson=''):
+    def __init__(self, _id, _type, label='', distance_m=0, duration_s=0, price_EUR=[0.0], gCO2 = 0, departure_point=[0.0], arrival_point=[0.0],geojson=''):
         self.id = _id
         self.type = _type
         self.label = label
@@ -64,6 +66,8 @@ class journey_step:
         self.duration_s = duration_s
         self.price_EUR = price_EUR
         self.gCO2 = gCO2
+        self.departure_point = departure_point
+        self.arrival_point = arrival_point
         self.geojson = geojson
         
     def to_json(self):
