@@ -54,25 +54,26 @@ def skyscanner_query_directions(query):
         return skyscanner_journeys(df_response)
 
 
-
 def skyscanner_journeys(df_response, _id=0):
     # affect a price to each leg
     df_response['price_step'] = df_response.PriceTotal_AR / df_response.nb_segments
     # Compute distance for each leg
     print(df_response.columns)
     df_response['distance_step'] = df_response.apply(lambda x: distance(x.geoloc_origin_seg, x.geoloc_destination_seg).m, axis=1)
-    # boolean to know whether and when there will be a transfert after the leg
-    df_response['next_departure'] = df_response.DepartureDateTime.shift(1)
     lst_journeys = list()
 
     # all itineraries :
     for itinerary_id in df_response.itinerary_id.unique():
         itinerary = df_response[df_response.itinerary_id == itinerary_id]
         i = _id
+        # boolean to know whether and when there will be a transfert after the leg
+        itinerary['next_departure'] = itinerary.DepartureDateTime.shift(1)
+        itinerary['next_stop_name'] = itinerary.Name_origin_seg.shift(1)
+        itinerary['next_geoloc'] = itinerary.geoloc_origin_seg.shift(-1)
         lst_sections = list()
         # We add a waiting period at the airport of 2 hours
         step = tmw.journey_step(i,
-                                _type=constants().TYPE_WAIT,
+                                _type=constants.TYPE_WAIT,
                                 label='',
                                 distance_m=0,
                                 duration_s=_AIRPORT_WAITING_PERIOD,
@@ -86,14 +87,19 @@ def skyscanner_journeys(df_response, _id=0):
         i = i + 1
         for index, leg in itinerary.sort_values(by = 'DepartureDateTime').iterrows():
             step = tmw.journey_step(i,
-                                    _type=constants().TYPE_PLANE,
+                                    _type=constants.TYPE_PLANE,
                                     label='',
                                     distance_m=leg.distance_step,
                                     duration_s=leg.Duration_seg * 60,
                                     price_EUR=[leg.price_step],
                                     gCO2=0,
                                     departure_point = leg.geoloc_origin_seg,
-                                    arrival_point = itinerary.geoloc_destination_seg,
+                                    arrival_point = leg.geoloc_destination_seg,
+                                    departure_stop_name=leg.Name_origin_seg,
+                                    arrival_stop_name=leg.Name,
+                                    departure_date=leg.DepartureDateTime,
+                                    arrival_date=leg.ArrivalDateTime,
+                                    trip_code=leg.FlightNumber_rich,
                                     geojson=[],
                                     )
             lst_sections.append(step)
@@ -101,14 +107,18 @@ def skyscanner_journeys(df_response, _id=0):
             # add transfer steps
             if not pd.isna(leg.next_departure):
                 step = tmw.journey_step(i,
-                                        _type=constants().TYPE_TRANSFER,
+                                        _type=constants.TYPE_TRANSFER,
                                         label='',
                                         distance_m=0,
                                         duration_s=(dt.strptime(leg['next_departure'], '%Y-%m-%dT%H:%M:%S') - dt.strptime(leg['ArrivalDateTime'],
                                                                                           '%Y-%m-%dT%H:%M:%S')).seconds,
                                         price_EUR=[0],
                                         departure_point=leg.geoloc_destination_seg,
-                                        arrival_point=itinerary.geoloc_destination_seg,
+                                        arrival_point=leg.next_geoloc,
+                                        departure_date=leg.ArrivalDateTime,
+                                        arrival_date=leg.next_departure,
+                                        departure_stop_name=leg.Name,
+                                        arrival_stop_name=leg.next_stop_name,
                                         gCO2=0,
                                         geojson=[],
                                         )
@@ -251,10 +261,11 @@ def format_skyscanner_response(rep_json, one_way=False, segment_details=True, on
         # Add relevant segment info to the exploded df (already containing all the leg and itinary infos)
         segments_rich = segments_rich.merge(segments, left_on='SegmentIds', right_on='Id', suffixes=['_global', '_seg'])
         segments_rich = segments_rich.merge(places[['Id', 'Code', 'Type', 'Name', 'geoloc']],
-                                            left_on='DestinationStation_seg', right_on='Id',
-                                            suffixes=['', '_destination_seg'])
+                                            left_on='DestinationStation_seg', right_on='Id'
+                                            , suffixes=['', '_destination_seg'])
         segments_rich = segments_rich.merge(places[['Id', 'Code', 'Type', 'Name', 'geoloc']],
-                                            left_on='OriginStation_seg', right_on='Id', suffixes=['', '_origin_seg'])
+                                            left_on='OriginStation_seg', right_on='Id'
+                                            , suffixes=['', '_origin_seg'])
         segments_rich = segments_rich.merge(carriers[['Id', 'Code']], left_on='Carrier', right_on='Id',
                                             suffixes=['', '_carrier'])
 
@@ -267,7 +278,7 @@ def format_skyscanner_response(rep_json, one_way=False, segment_details=True, on
             ['itinerary_id', 'Arrival', 'Departure', 'Code', 'geoloc', 'Code_destination',
              'geoloc_destination', 'Duration_global',
              'Id_global', 'PriceTotal_AR', 'nb_segments', 'ArrivalDateTime', 'DepartureDateTime',
-             'Duration_seg', 'JourneyMode_seg',
+             'Duration_seg', 'JourneyMode_seg', 'Name_origin_seg', 'Name',
              'Id', 'Code_origin_seg', 'geoloc_origin_seg', 'Code_destination_seg', 'geoloc_destination_seg',
              'FlightNumber_rich']].sort_values(by=['itinerary_id', 'Id_global'])
 

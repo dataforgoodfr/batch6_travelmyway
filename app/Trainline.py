@@ -10,7 +10,7 @@ import constants
 
 # Get all train and bus station from trainline thanks to https://github.com/tducret/trainline-python
 _STATIONS_CSV_FILE = "https://raw.githubusercontent.com/trainline-eu/stations/master/stations.csv"
-_STATION_WAITING_PERIOD = constants().WAITING_PERIOD_TRAINLINE
+_STATION_WAITING_PERIOD = constants.WAITING_PERIOD_TRAINLINE
 
 
 def update_trainline_stops(url=_STATIONS_CSV_FILE):
@@ -171,9 +171,10 @@ def trainline_journeys(df_response, _id=0):
     # print(df_response.columns)
     df_response['distance_step'] = df_response.apply(lambda x: distance(x.geoloc_depart_seg, x.geoloc_arrival_seg).m,
                                                      axis=1)
+    df_response['trip_code'] = df_response.train_name + ' ' + df_response.train_number
     tranportation_mean_to_type = {
-        'coach': constants().TYPE_COACH,
-        'train': constants().TYPE_TRAIN,
+        'coach': constants.TYPE_COACH,
+        'train': constants.TYPE_TRAIN,
     }
     lst_journeys = list()
     # all itineraries :
@@ -182,11 +183,13 @@ def trainline_journeys(df_response, _id=0):
         itinerary = df_response[df_response.id_global == itinerary_id]
         # boolean to know whether and when there will be a transfer after the leg
         itinerary['next_departure'] = itinerary.departure_date_seg.shift(-1)
+        itinerary['next_stop_name'] = itinerary.name_depart_seg.shift(1)
+        itinerary['next_geoloc'] = itinerary.geoloc_depart_seg.shift(-1)
         i = _id
         lst_sections = list()
         # We add a waiting period at the station of 15 minutes
         step = tmw.journey_step(i,
-                                _type=constants().TYPE_WAIT,
+                                _type=constants.TYPE_WAIT,
                                 label='',
                                 distance_m=0,
                                 duration_s=_STATION_WAITING_PERIOD,
@@ -209,6 +212,11 @@ def trainline_journeys(df_response, _id=0):
                                     gCO2=0,
                                     departure_point=leg.geoloc_depart_seg,
                                     arrival_point=leg.geoloc_arrival_seg,
+                                    departure_stop_name=leg.name_depart_seg,
+                                    arrival_stop_name=leg.name_arrival_seg,
+                                    departure_date=leg.departure_date_seg,
+                                    arrival_date=leg.arrival_date_seg,
+                                    trip_code=leg.trip_code,
                                     geojson=[],
                                     )
             lst_sections.append(step)
@@ -216,13 +224,17 @@ def trainline_journeys(df_response, _id=0):
             # add transfer steps
             if not pd.isna(leg.next_departure):
                 step = tmw.journey_step(i,
-                                        _type=constants().TYPE_TRANSFER,
+                                        _type=constants.TYPE_TRANSFER,
                                         label='',
                                         distance_m=0,
                                         duration_s=(leg['next_departure'] - leg['arrival_date_seg']).seconds,
                                         price_EUR=[0],
                                         departure_point=leg.geoloc_arrival_seg,
-                                        arrival_point=itinerary.geoloc_arrival_seg,
+                                        arrival_point=leg.next_geoloc,
+                                        departure_stop_name=leg.name_depart_seg,
+                                        arrival_stop_name=leg.name_arrival_seg,
+                                        departure_date=leg.arrival_date_seg,
+                                        arrival_date=leg.next_departure,
                                         gCO2=0,
                                         geojson=[],
                                         )
