@@ -7,6 +7,7 @@ import TMW as tmw
 from datetime import datetime as dt
 from geopy.distance import distance
 import tmw_api_keys
+import time
 
 pd.set_option('display.max_columns', 999)
 pd.set_option('display.width', 1000)
@@ -26,7 +27,10 @@ def create_airport_database():
 
     airports = airports.rename(columns={1: 'Code', 2: 'AirportName', 3: 'City', 4: 'Country', 14: 'latitude',15:'longitude'})
     airports = airports[['Code', 'AirportName', 'City', 'Country', 'latitude', 'longitude']]
+    # Filter airports with no Code (not very useful)
+    airports = airports[~pd.isna(airports.Code)]
     airports['geoloc']= airports.apply(lambda x: [x.latitude,x.longitude], axis=1)
+    airports['Code_sky']= airports.apply(lambda x: x.Code + '-sky', axis=1)
 
     print(f'found {airports.shape[0]} airports, here is an example: \n {airports[airports.latitude!=0.0].sample()} ')
     return airports
@@ -43,8 +47,10 @@ def skyscanner_query_directions(query):
     date_departure = query['query']['datetime']
 
     df_response = get_planes_from_skyscanner(date_departure, None, departure_point, arrival_point, details=True)
-
-    return skyscanner_journeys(df_response)
+    if df_response.empty:
+        return None
+    else :
+        return skyscanner_journeys(df_response)
 
 
 
@@ -64,10 +70,6 @@ def skyscanner_journeys(df_response, _id=0):
         i = _id
         lst_sections = list()
         # We add a waiting period at the airport of 2 hours
-        print(itinerary.shape)
-        print(type(itinerary.geoloc))
-        print(itinerary.geoloc)
-        print(itinerary.geoloc.iloc[0])
         step = tmw.journey_step(i,
                                 _type='Waiting',
                                 label='',
@@ -95,7 +97,7 @@ def skyscanner_journeys(df_response, _id=0):
                                     )
             lst_sections.append(step)
             i = i+1
-            # add transfert steps
+            # add transfer steps
             if not pd.isna(leg.next_departure):
                 step = tmw.journey_step(i,
                                         _type='Transfert',
@@ -134,11 +136,11 @@ def get_price_from_itineraries(x):
         return min(prices)
 
 
-def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, details=False, only_with_price=True):
+def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, details=False, try_number=1):
     url = "https://skyscanner-skyscanner-flight-search-v1.p.rapidapi.com/apiservices/pricing/v1.0"
     one_way = date_return is None
     if one_way:
-        payload = f'cabinClass=economy&children=0&infants=0&country=FR&currency=USD&locale=en-US&originPlace={departure}&destinationPlace={arrival}&outboundDate={date_departure}&adults=1'
+        payload = f'cabinClass=economy&children=0&infants=0&country=FR&currency=EUR&locale=en-US&originPlace={departure}&destinationPlace={arrival}&outboundDate={date_departure}&adults=1'
     else:
         payload = f'inboundDate={date_return}&cabinClass=economy&children=0&infants=0&country=FR&currency=USD&locale=en-US&originPlace={departure}&destinationPlace={arrival}&outboundDate={date_departure}&adults=1'
 
@@ -148,10 +150,26 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
         'content-type': "application/x-www-form-urlencoded"
     }
     # create session
+    print(f'request session for {departure} to {arrival}')
     response = requests.request("POST", url, data=payload, headers=headers)
     # get session key
-    print(response.headers)
-    key = response.headers['Location'].split('/')[-1]
+    try :
+        print(response.headers)
+        key = response.headers['Location'].split('/')[-1]
+    except KeyError:
+        # Retry calling API 3 times
+        try :
+            # Is there an error with the query ?
+            error = response.json()['ValidationErrors']
+            print(error)
+            return pd.DataFrame()
+        except KeyError:
+            if try_number<3:
+                time.sleep(2)
+                get_planes_from_skyscanner(date_departure, date_return, departure, arrival,
+                                           details=False, try_number=try_number+1)
+            else :
+                raise KeyError('The API did not allow for session creation 3 times in a row')
     url = 'https://skyscanner-skyscanner-flight-search-v1.p.rapidapi.com/apiservices/pricing/uk2/v1.0/' + key
     querystring = {"pageIndex": "0", "pageSize": "100"}
 
@@ -191,7 +209,6 @@ def format_skyscanner_response(rep_json, one_way=False, segment_details=True, on
                       , left_on='Id', right_on='OutboundLegId', suffixes=['', '_out'])
     # filter only most relevant itineraries (5 cheapest + 5 fastest)
     limit = min(5, legs.shape[0])
-    print(legs.columns)
     legs = legs.sort_values(by = 'PriceTotal_AR').head(limit).append(legs.sort_values(by = 'Duration').head(limit))
 
     if not one_way:
@@ -224,7 +241,6 @@ def format_skyscanner_response(rep_json, one_way=False, segment_details=True, on
     # else we break it down to each segment
     else:
         # get segments (each unique actual flight)
-        print('je suis là ouiiiii')
         segments = pd.DataFrame.from_dict(rep_json['Segments'])
         # get carriers (flight companies)
         carriers = pd.DataFrame.from_dict(rep_json['Carriers'])
@@ -298,25 +314,54 @@ def pandas_explode(df, column_to_explode):
     return return_df
 
 
-def main(departure='CDG-sky', arrival='TXL-sky', departure_date='2019-11-10'):
-    json_query = {
-        'query':{
-            'start':{
-                'coord': departure,
-            },
-            'to':{
-                'coord': arrival,
-            },
-            'datetime': departure_date         # example of format (based on navitia): 20191012T063700
-            }
-    }
-    tmp = skyscanner_query_directions(json_query)
-    rep = list()
-    for i in tmp:
-        print(i.to_json())
-        rep.append(i.to_json())
+# Find the stops close to a geo point
+def get_airports_from_geo_locs(geoloc_dep, geoloc_arrival):
+    stops_tmp = _AIRPORT_DF.copy()
+    # compute proxi for distance (since we only need to compare no need to take the earth curve into account...)
+    stops_tmp['distance_dep'] = stops_tmp.apply(lambda x: distance(geoloc_dep, x.geoloc).m, axis =1)
+    stops_tmp['distance_arrival'] = stops_tmp.apply(lambda x: distance(geoloc_arrival, x.geoloc).m, axis =1)
 
-    return rep
+    # We get the 3 closest airports for departure and arrival
+    airport_list = dict()
+    airport_list['departure'] = stops_tmp.sort_values(by='distance_dep').Code_sky.head(3)
+    airport_list['arrival'] = stops_tmp.sort_values(by='distance_arrival').Code_sky.head(3)
+    return airport_list
+
+
+def main(departure=[48.3,2.3], arrival=[52.5170365,13.3888599], departure_date='2019-11-10'):
+    airports = get_airports_from_geo_locs(departure, arrival)
+    all_responses = list()
+    # Let's call the API for every couple airport departure and arrival
+    for airport_dep in airports['departure']:
+        for airport_arrival in airports['arrival']:
+            print(f'from {airport_dep} to {airport_arrival}')
+            json_query = {
+                'query':{
+                    'start':{
+                        'coord': airport_dep,
+                    },
+                    'to':{
+                        'coord': airport_arrival,
+                    },
+                    'datetime': departure_date
+                    }
+            }
+            single_route = skyscanner_query_directions(json_query)
+            if single_route is not None:
+                print(f'nombre de route {len(single_route)}')
+                print(single_route)
+                for trip in single_route:
+                    print(trip.to_json())
+                    all_responses.append(trip)
+            print(f'all good for {airport_dep} to {airport_arrival}')
+
+    all_reponses_json = list()
+    print(all_responses)
+    for journey_sky in all_responses:
+        print(journey_sky.to_json())
+        all_reponses_json.append(journey_sky.to_json())
+
+    return all_reponses_json
 
 
 
