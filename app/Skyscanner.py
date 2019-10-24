@@ -8,6 +8,7 @@ from datetime import datetime as dt
 from geopy.distance import distance
 import tmw_api_keys
 import time
+import constants
 
 pd.set_option('display.max_columns', 999)
 pd.set_option('display.width', 1000)
@@ -71,7 +72,7 @@ def skyscanner_journeys(df_response, _id=0):
         lst_sections = list()
         # We add a waiting period at the airport of 2 hours
         step = tmw.journey_step(i,
-                                _type='Waiting',
+                                _type=constants().TYPE_WAIT,
                                 label='',
                                 distance_m=0,
                                 duration_s=_AIRPORT_WAITING_PERIOD,
@@ -85,7 +86,7 @@ def skyscanner_journeys(df_response, _id=0):
         i = i + 1
         for index, leg in itinerary.sort_values(by = 'DepartureDateTime').iterrows():
             step = tmw.journey_step(i,
-                                    _type='Flight',
+                                    _type=constants().TYPE_PLANE,
                                     label='',
                                     distance_m=leg.distance_step,
                                     duration_s=leg.Duration_seg * 60,
@@ -100,7 +101,7 @@ def skyscanner_journeys(df_response, _id=0):
             # add transfer steps
             if not pd.isna(leg.next_departure):
                 step = tmw.journey_step(i,
-                                        _type='Transfert',
+                                        _type=constants().TYPE_TRANSFER,
                                         label='',
                                         distance_m=0,
                                         duration_s=(dt.strptime(leg['next_departure'], '%Y-%m-%dT%H:%M:%S') - dt.strptime(leg['ArrivalDateTime'],

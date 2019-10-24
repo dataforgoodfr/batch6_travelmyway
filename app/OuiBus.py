@@ -6,11 +6,12 @@ import copy
 from geopy.distance import distance
 import tmw_api_keys
 import TMW as tmw
+import constants
 
 pd.set_option('display.max_columns', 999)
 pd.set_option('display.width', 1000)
 
-_STATION_WAITING_PERIOD = 15 * 60
+_STATION_WAITING_PERIOD = constants().WAITING_PERIOD_OUIBUS
 
 def pandas_explode(df, column_to_explode):
     """
@@ -184,7 +185,7 @@ def ouibus_journeys(df_response, _id=0):
         lst_sections = list()
         # We add a waiting period at the station of 15 minutes
         step = tmw.journey_step(i,
-                                _type='Waiting',
+                                _type=constants().TYPE_WAIT,
                                 label='',
                                 distance_m=0,
                                 duration_s=_STATION_WAITING_PERIOD,
@@ -198,7 +199,7 @@ def ouibus_journeys(df_response, _id=0):
         i = i + 1
         for index, leg in itinerary.iterrows():
             step = tmw.journey_step(i,
-                                    _type='Coach',
+                                    _type=constants().TYPE_COACH,
                                     label='',
                                     distance_m=leg.distance_step,
                                     duration_s=(leg.arrival_seg - leg.departure_seg).seconds,
@@ -213,7 +214,7 @@ def ouibus_journeys(df_response, _id=0):
             # add transfer steps
             if not pd.isna(leg.next_departure):
                 step = tmw.journey_step(i,
-                                        _type='Transfer',
+                                        _type=constants().TYPE_TRANSFER,
                                         label='',
                                         distance_m=distance(leg.geoloc_arrival_seg,leg.next_geoloc).m,
                                         duration_s=(leg['next_departure'] - leg['arrival_date_seg']).seconds,
