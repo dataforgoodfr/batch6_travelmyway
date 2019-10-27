@@ -75,6 +75,7 @@ def update_stop_list():
     # If no meta gare, the id is used
     stops_rich['id_meta_gare'] = stops_rich.id_meta_gare.combine_first(stops_rich.id)
     stops_rich['geoloc'] = stops_rich.apply(lambda x: [x.latitude, x.longitude], axis=1)
+
     print(f'{stops_rich.shape[0]} Ouibus stops were found, here is an example:\n {stops_rich.sample()}')
     return stops_rich
 
@@ -118,6 +119,9 @@ def get_stops_from_geo_loc(geoloc_origin, geoloc_destination, max_distance_km=50
 def format_ouibus_response(df_response):
     # enrich information
     df_response['nb_segments'] = df_response.apply(lambda x: len(x.legs), axis=1)
+    df_response['arrival'] = pd.to_datetime(df_response['arrival'])
+    df_response['departure'] = pd.to_datetime(df_response['departure'])
+    df_response['duration_total'] = df_response.apply(lambda x: (x.arrival - x.departure).seconds, axis=1)
     response_rich = pandas_explode(df_response, 'legs')
     response_rich['origin_id_seg'] = response_rich.apply(lambda x: x['legs']['origin_id'], axis=1)
     response_rich['destination_id_seg'] = response_rich.apply(lambda x: x['legs']['destination_id'], axis=1)
@@ -128,6 +132,10 @@ def format_ouibus_response(df_response):
                                         right_on = 'id', suffixes=['','_origin_seg'])
     response_rich = response_rich.merge(_ALL_BUS_STOPS[['id', 'geoloc', 'short_name']], left_on = 'destination_id_seg',
                                         right_on = 'id', suffixes=['','_destination_seg'])
+    # filter only most relevant itineraries (2 cheapest + 2 fastest)
+    limit = min(2, response_rich.shape[0])
+    response_rich = response_rich.sort_values(by = 'price_cents').head(limit).append(response_rich.sort_values(by = 'duration_total').head(limit))
+
     return response_rich
 
 
