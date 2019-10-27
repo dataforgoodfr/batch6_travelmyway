@@ -1,10 +1,16 @@
 """
 INITIATE CLASSES
 """
+from datetime import datetime as dt
+import Trainline
+import Skyscanner
+import OuiBus
+
 class journey:
     def __init__(self, _id, steps=[]):
         self.id = _id
         self.label = ''
+        self.api_list = []
         self.score = 0
         self.total_distance = 0
         self.total_duration = 0
@@ -12,20 +18,26 @@ class journey:
         self.total_gCO2 = 0
         self.departure_point = [0, 0]
         self.arrival_point = [0, 0]
+        self.departure_date = dt.now()
+        self.arrival_date  = dt.now()
         self.steps = steps
 
     def add(self, steps=[]):
         self.steps.append(steps)
     
     def to_json(self):
-        json = {'id':self.id,
-                'label':self.label,
-                'score':self.score,
-                'total_distance':self.total_distance,
-                'total_duration':self.total_duration,
-                'total_price_EUR':self.total_price_EUR,
-                'total_gCO2':self.total_gCO2,
-                'journey':[step.to_json() for step in self.steps]
+        json = {'id': self.id,
+                'label': self.label,
+                'score': self.score,
+                'total_distance': self.total_distance,
+                'total_duration': self.total_duration,
+                'total_price_EUR': self.total_price_EUR,
+                'departure_point': self.departure_point,
+                'arrival_point': self.arrival_point,
+                'departure_date': self.departure_date,
+                'arrival_date': self.arrival_date,
+                'total_gCO2': self.total_gCO2,
+                'journey': [step.to_json() for step in self.steps]
                 }
         return json
     
@@ -56,9 +68,12 @@ class journey:
             except:
                 print('ERROR plot map: step id: {} / type: {}'.format(step.id, step.type))
         return _map
-    
+
+
 class journey_step:
-    def __init__(self, _id, _type, label='', distance_m=0, duration_s=0, price_EUR=[0.0], gCO2 = 0, departure_point=[0.0], arrival_point=[0.0],geojson=''):
+    def __init__(self, _id, _type, label='', distance_m=0, duration_s=0, price_EUR=[0.0], gCO2 = 0, departure_point=[0.0],
+                 arrival_point=[0.0], departure_stop_name='', arrival_stop_name='', departure_date=dt.now()
+                 , arrival_date=dt.now(), transportation_final_destination='', trip_code='', geojson=''):
         self.id = _id
         self.type = _type
         self.label = label
@@ -68,17 +83,30 @@ class journey_step:
         self.gCO2 = gCO2
         self.departure_point = departure_point
         self.arrival_point = arrival_point
+        self.departure_stop_name = departure_stop_name
+        self.arrival_stop_name  = arrival_stop_name
+        self.departure_date = departure_date
+        self.arrival_date  = arrival_date
+        self.trip_code = trip_code #AF350 / TGV8342 / Métro Ligne 2 ect...
+        self.transportation_final_destination = transportation_final_destination # Direction of metro / final stop on train ect..
         self.geojson = geojson
         
     def to_json(self):
         json = {'id':self.id,
-                 'type':self.type,
-                 'label':self.label,
-                 'distance_m':self.distance_m,
-                 'duration_s':self.duration_s,
-                 'price_EUR':self.price_EUR,
-                 'gCO2':self.gCO2,
-                 'geojson':self.geojson,
+                'type':self.type,
+                'label':self.label,
+                'distance_m':self.distance_m,
+                'duration_s':self.duration_s,
+                'price_EUR':self.price_EUR,
+                'departure_point': self.departure_point,
+                'arrival_point': self.arrival_point,
+                'departure_stop_name': self.departure_stop_name,
+                'arrival_stop_name': self.arrival_stop_name,
+                'departure_date': self.departure_date,
+                'arrival_date': self.arrival_date,
+                'trip_code': self.trip_code,
+                'gCO2':self.gCO2,
+                'geojson':self.geojson,
                 }
         return json
     
@@ -137,6 +165,21 @@ def create_query(start, to, datetime=''):
             } 
     }
     return json_query
+
+"""
+Build a multi-modal journey
+"""
+# WIP WIP WIP
+def compute_complete_journey(departure_date = '2019-10-25T09:00:00+0200', geoloc_dep=[48.85,2.35], geoloc_arrival=[43.60,1.44]):
+    # First we look for intercities journeys
+    trainline_journeys = Trainline.main(departure_date, geoloc_dep, geoloc_arrival)
+    skyscanner_journeys = Skyscanner.main(departure_date, geoloc_dep, geoloc_arrival)
+    ouibus_journey = OuiBus.main(departure_date, geoloc_dep, geoloc_arrival)
+    ors_step = ORS_query_directions(create_query(geoloc_dep, geoloc_arrival, departure_date))
+
+    # Then we call Navitia to get
+    return None
+
 
 """
 OPEN ROUTE SERVICES FUNCTIONS

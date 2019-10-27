@@ -6,11 +6,11 @@ import io
 import TMW as tmw
 from datetime import datetime as dt
 from geopy.distance import distance
-import tmw_api_keys
+import constants
 
 # Get all train and bus station from trainline thanks to https://github.com/tducret/trainline-python
 _STATIONS_CSV_FILE = "https://raw.githubusercontent.com/trainline-eu/stations/master/stations.csv"
-_STATION_WAITING_PERIOD = 15 * 60
+_STATION_WAITING_PERIOD = constants.WAITING_PERIOD_TRAINLINE
 
 
 def update_trainline_stops(url=_STATIONS_CSV_FILE):
@@ -171,6 +171,11 @@ def trainline_journeys(df_response, _id=0):
     # print(df_response.columns)
     df_response['distance_step'] = df_response.apply(lambda x: distance(x.geoloc_depart_seg, x.geoloc_arrival_seg).m,
                                                      axis=1)
+    df_response['trip_code'] = df_response.train_name + ' ' + df_response.train_number
+    tranportation_mean_to_type = {
+        'coach': constants.TYPE_COACH,
+        'train': constants.TYPE_TRAIN,
+    }
     lst_journeys = list()
     # all itineraries :
     print(f'nb itinerary : {df_response.id_global.nunique()}')
@@ -178,11 +183,13 @@ def trainline_journeys(df_response, _id=0):
         itinerary = df_response[df_response.id_global == itinerary_id]
         # boolean to know whether and when there will be a transfer after the leg
         itinerary['next_departure'] = itinerary.departure_date_seg.shift(-1)
+        itinerary['next_stop_name'] = itinerary.name_depart_seg.shift(1)
+        itinerary['next_geoloc'] = itinerary.geoloc_depart_seg.shift(-1)
         i = _id
         lst_sections = list()
         # We add a waiting period at the station of 15 minutes
         step = tmw.journey_step(i,
-                                _type='Waiting',
+                                _type=constants.TYPE_WAIT,
                                 label='',
                                 distance_m=0,
                                 duration_s=_STATION_WAITING_PERIOD,
@@ -195,8 +202,9 @@ def trainline_journeys(df_response, _id=0):
         lst_sections.append(step)
         i = i + 1
         for index, leg in itinerary.iterrows():
+
             step = tmw.journey_step(i,
-                                    _type=leg.transportation_mean,
+                                    _type=tranportation_mean_to_type[leg.transportation_mean],
                                     label='',
                                     distance_m=distance(leg.geoloc_depart_seg, leg.geoloc_arrival_seg).m,
                                     duration_s=(leg.arrival_date_seg - leg.departure_date_seg).seconds,
@@ -204,20 +212,29 @@ def trainline_journeys(df_response, _id=0):
                                     gCO2=0,
                                     departure_point=leg.geoloc_depart_seg,
                                     arrival_point=leg.geoloc_arrival_seg,
+                                    departure_stop_name=leg.name_depart_seg,
+                                    arrival_stop_name=leg.name_arrival_seg,
+                                    departure_date=leg.departure_date_seg,
+                                    arrival_date=leg.arrival_date_seg,
+                                    trip_code=leg.trip_code,
                                     geojson=[],
                                     )
             lst_sections.append(step)
             i = i + 1
-            # add transfert steps
+            # add transfer steps
             if not pd.isna(leg.next_departure):
                 step = tmw.journey_step(i,
-                                        _type='Transfer',
+                                        _type=constants.TYPE_TRANSFER,
                                         label='',
                                         distance_m=0,
                                         duration_s=(leg['next_departure'] - leg['arrival_date_seg']).seconds,
                                         price_EUR=[0],
                                         departure_point=leg.geoloc_arrival_seg,
-                                        arrival_point=itinerary.geoloc_arrival_seg,
+                                        arrival_point=leg.next_geoloc,
+                                        departure_stop_name=leg.name_depart_seg,
+                                        arrival_stop_name=leg.name_arrival_seg,
+                                        departure_date=leg.arrival_date_seg,
+                                        arrival_date=leg.next_departure,
                                         gCO2=0,
                                         geojson=[],
                                         )
@@ -275,6 +292,7 @@ def pandas_explode(df, column_to_explode):
     # Return
     return return_df
 
+
 # Find the stops close to a geo point
 def get_stops_from_geo_locs(geoloc_dep, geoloc_arrival, max_distance_km = 50):
     stops_tmp = _ALL_STATIONS.copy()
@@ -291,8 +309,6 @@ def get_stops_from_geo_locs(geoloc_dep, geoloc_arrival, max_distance_km = 50):
     return parent_station_id_list
 
 
-
-
 def main(departure_date = '2019-10-25T09:00:00+0200', geoloc_dep=[48.85,2.35], geoloc_arrival=[43.60,1.44]):
     stops = get_stops_from_geo_locs(geoloc_dep, geoloc_arrival)
     # print(f'{len(stops.departure)} departure parent station found ')
@@ -302,10 +318,12 @@ def main(departure_date = '2019-10-25T09:00:00+0200', geoloc_dep=[48.85,2.35], g
         for arrival_station_id in stops['arrival']:
             print(f'call API with {departure_station_id}, and {arrival_station_id }')
             detail_response = detail_response.append(search_for_all_fares(departure_date, int(departure_station_id), int(arrival_station_id)
-                                                                      , passengers, segment_details=True))
-    for i in trainline_journeys(detail_response):
+                                                                          , passengers, segment_details=True))
+    all_journeys = trainline_journeys(detail_response)
+    for i in all_journeys:
         print(i.to_json())
 
+    return all_journeys
 
 if __name__ == '__main__':
     main()

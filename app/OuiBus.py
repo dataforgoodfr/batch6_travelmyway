@@ -6,11 +6,12 @@ import copy
 from geopy.distance import distance
 import tmw_api_keys
 import TMW as tmw
+import constants
 
 pd.set_option('display.max_columns', 999)
 pd.set_option('display.width', 1000)
 
-_STATION_WAITING_PERIOD = 15 * 60
+_STATION_WAITING_PERIOD = constants.WAITING_PERIOD_OUIBUS
 
 def pandas_explode(df, column_to_explode):
     """
@@ -74,6 +75,7 @@ def update_stop_list():
     # If no meta gare, the id is used
     stops_rich['id_meta_gare'] = stops_rich.id_meta_gare.combine_first(stops_rich.id)
     stops_rich['geoloc'] = stops_rich.apply(lambda x: [x.latitude, x.longitude], axis=1)
+
     print(f'{stops_rich.shape[0]} Ouibus stops were found, here is an example:\n {stops_rich.sample()}')
     return stops_rich
 
@@ -117,6 +119,9 @@ def get_stops_from_geo_loc(geoloc_origin, geoloc_destination, max_distance_km=50
 def format_ouibus_response(df_response):
     # enrich information
     df_response['nb_segments'] = df_response.apply(lambda x: len(x.legs), axis=1)
+    df_response['arrival'] = pd.to_datetime(df_response['arrival'])
+    df_response['departure'] = pd.to_datetime(df_response['departure'])
+    df_response['duration_total'] = df_response.apply(lambda x: (x.arrival - x.departure).seconds, axis=1)
     response_rich = pandas_explode(df_response, 'legs')
     response_rich['origin_id_seg'] = response_rich.apply(lambda x: x['legs']['origin_id'], axis=1)
     response_rich['destination_id_seg'] = response_rich.apply(lambda x: x['legs']['destination_id'], axis=1)
@@ -127,6 +132,10 @@ def format_ouibus_response(df_response):
                                         right_on = 'id', suffixes=['','_origin_seg'])
     response_rich = response_rich.merge(_ALL_BUS_STOPS[['id', 'geoloc', 'short_name']], left_on = 'destination_id_seg',
                                         right_on = 'id', suffixes=['','_destination_seg'])
+    # filter only most relevant itineraries (2 cheapest + 2 fastest)
+    limit = min(2, response_rich.shape[0])
+    response_rich = response_rich.sort_values(by = 'price_cents').head(limit).append(response_rich.sort_values(by = 'duration_total').head(limit))
+
     return response_rich
 
 
@@ -179,12 +188,13 @@ def ouibus_journeys(df_response, _id=0):
         itinerary = df_response[df_response.id == itinerary_id]
         # boolean to know whether and when there will be a transfer after the leg
         itinerary['next_departure'] = itinerary.departure_seg.shift(-1)
+        itinerary['next_stop_name'] = itinerary.short_name_origin_seg.shift(1)
         itinerary['next_geoloc'] = itinerary.geoloc_origin_seg.shift(-1)
         i = _id
         lst_sections = list()
         # We add a waiting period at the station of 15 minutes
         step = tmw.journey_step(i,
-                                _type='Waiting',
+                                _type=constants.TYPE_WAIT,
                                 label='',
                                 distance_m=0,
                                 duration_s=_STATION_WAITING_PERIOD,
@@ -198,7 +208,7 @@ def ouibus_journeys(df_response, _id=0):
         i = i + 1
         for index, leg in itinerary.iterrows():
             step = tmw.journey_step(i,
-                                    _type='Coach',
+                                    _type=constants.TYPE_COACH,
                                     label='',
                                     distance_m=leg.distance_step,
                                     duration_s=(leg.arrival_seg - leg.departure_seg).seconds,
@@ -206,6 +216,11 @@ def ouibus_journeys(df_response, _id=0):
                                     gCO2=0,
                                     departure_point=leg.geoloc_origin_seg,
                                     arrival_point=leg.geoloc_destination_seg,
+                                    departure_stop_name=leg.short_name_origin_seg,
+                                    arrival_stop_name=leg.short_name_destination_seg,
+                                    departure_date=leg.departure_seg,
+                                    arrival_date=leg.arrival_seg,
+                                    trip_code='OuiBus ' + leg.bus_number,
                                     geojson=[],
                                     )
             lst_sections.append(step)
@@ -213,13 +228,15 @@ def ouibus_journeys(df_response, _id=0):
             # add transfer steps
             if not pd.isna(leg.next_departure):
                 step = tmw.journey_step(i,
-                                        _type='Transfer',
+                                        _type=constants.TYPE_TRANSFER,
                                         label='',
                                         distance_m=distance(leg.geoloc_arrival_seg,leg.next_geoloc).m,
                                         duration_s=(leg['next_departure'] - leg['arrival_date_seg']).seconds,
                                         price_EUR=[0],
                                         departure_point=leg.geoloc_arrival_seg,
                                         arrival_point=leg.next_geoloc,
+                                        departure_stop_name=leg.short_name_destination_seg,
+                                        arrival_stop_name=leg.next_stop_name,
                                         gCO2=0,
                                         geojson=[],
                                         )
