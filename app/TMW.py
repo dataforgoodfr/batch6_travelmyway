@@ -2,12 +2,15 @@
 INITIATE CLASSES
 """
 from datetime import datetime as dt
-
+import Trainline
+import Skyscanner
+import OuiBus
 
 class journey:
     def __init__(self, _id, steps=[]):
         self.id = _id
         self.label = ''
+        self.api_list = []
         self.score = 0
         self.total_distance = 0
         self.total_duration = 0
@@ -85,7 +88,7 @@ class journey_step:
         self.departure_date = departure_date
         self.arrival_date  = arrival_date
         self.trip_code = trip_code #AF350 / TGV8342 / Métro Ligne 2 ect...
-        # self.transportation_final_destination = transportation_final_destination # Direction of metro / final stop on train ect..
+        self.transportation_final_destination = transportation_final_destination # Direction of metro / final stop on train ect..
         self.geojson = geojson
         
     def to_json(self):
@@ -162,6 +165,21 @@ def create_query(start, to, datetime=''):
             } 
     }
     return json_query
+
+"""
+Build a multi-modal journey
+"""
+# WIP WIP WIP
+def compute_complete_journey(departure_date = '2019-10-25T09:00:00+0200', geoloc_dep=[48.85,2.35], geoloc_arrival=[43.60,1.44]):
+    # First we look for intercities journeys
+    trainline_journeys = Trainline.main(departure_date, geoloc_dep, geoloc_arrival)
+    skyscanner_journeys = Skyscanner.main(departure_date, geoloc_dep, geoloc_arrival)
+    ouibus_journey = OuiBus.main(departure_date, geoloc_dep, geoloc_arrival)
+    ors_step = ORS_query_directions(create_query(geoloc_dep, geoloc_arrival, departure_date))
+
+    # Then we call Navitia to get
+    return None
+
 
 """
 OPEN ROUTE SERVICES FUNCTIONS
