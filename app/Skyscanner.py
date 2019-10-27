@@ -218,8 +218,8 @@ def format_skyscanner_response(rep_json, one_way=False, segment_details=True, on
     # We merge to get price for both the inbound and outbound legs
     legs = legs.merge(itineraries[['itinerary_id', 'OutboundLegId', 'PriceTotal_AR']], how='left'
                       , left_on='Id', right_on='OutboundLegId', suffixes=['', '_out'])
-    # filter only most relevant itineraries (5 cheapest + 5 fastest)
-    limit = min(5, legs.shape[0])
+    # filter only most relevant itineraries (2 cheapest + 2 fastest)
+    limit = min(2, legs.shape[0])
     legs = legs.sort_values(by = 'PriceTotal_AR').head(limit).append(legs.sort_values(by = 'Duration').head(limit))
 
     if not one_way:
