@@ -39,6 +39,12 @@
     "eslint-plugin-prettier": "^3.1.1",
     "preact": "^10.0.1",
     "preact-render-to-string": "^5.1.0",
-    "preact-router": "^3.0.0"
+    "preact-router": "^3.0.0",
+    "react-dates": "^21.3.2"
+  },
+  "alias": {
+    "react": "preact/compat",
+    "react-dom/test-utils": "preact/test-utils",
+    "react-dom": "preact/compat"
   }
 }
