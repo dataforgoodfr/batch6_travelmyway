@@ -1,0 +1,9 @@
+{
+  "name": "Travel My Way",
+  "short_name": "TMW",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fff",
+  "theme_color": "#673ab8"
+}

@@ -1,0 +1,9 @@
+{
+  "extends": ["standard-preact", "standard"],
+  "plugins": ["prettier"],
+  "rules": {
+    "prettier/prettier": "error",
+    "jsx-a11y/href-no-hash": [0],
+    "space-before-function-paren": [0]
+  }
+}
