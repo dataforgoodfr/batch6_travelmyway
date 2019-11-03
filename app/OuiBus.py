@@ -230,10 +230,10 @@ def ouibus_journeys(df_response, _id=0):
                 step = tmw.journey_step(i,
                                         _type=constants.TYPE_TRANSFER,
                                         label='',
-                                        distance_m=distance(leg.geoloc_arrival_seg,leg.next_geoloc).m,
-                                        duration_s=(leg['next_departure'] - leg['arrival_date_seg']).seconds,
+                                        distance_m=distance(leg.geoloc_destination_seg,leg.next_geoloc).m,
+                                        duration_s=(leg['next_departure'] - leg['arrival_seg']).seconds,
                                         price_EUR=[0],
-                                        departure_point=leg.geoloc_arrival_seg,
+                                        departure_point=leg.geoloc_destination_seg,
                                         arrival_point=leg.next_geoloc,
                                         departure_stop_name=leg.short_name_destination_seg,
                                         arrival_stop_name=leg.next_stop_name,
@@ -258,7 +258,7 @@ def main(departure_date = '2019-11-25', geoloc_dep=[48.85,2.35], geoloc_arrival=
 
     for i in ouibus_journeys(all_trips):
         print(i.to_json())
-
+    return ouibus_journeys(all_trips)
 
 _ALL_BUS_STOPS = update_stop_list()
 _PASSENGER = [{"id": 1,  "age": 30,  "price_currency": "EUR"}]
