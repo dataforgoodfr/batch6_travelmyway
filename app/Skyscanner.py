@@ -3,18 +3,20 @@ import pandas as pd
 import copy
 import zipfile
 import io
-import TMW as tmw
+from app import TMW as tmw
 from datetime import datetime as dt
 from geopy.distance import distance
-import tmw_api_keys
+from app import tmw_api_keys
 import time
-import constants
+from app import constants
+from app.co2_emissions import calculate_co2_emissions
 
 pd.set_option('display.max_columns', 999)
 pd.set_option('display.width', 1000)
 
 # Define the (arbitrary waiting period at the airport
 _AIRPORT_WAITING_PERIOD = 7200
+
 
 def create_airport_database():
     # Create an Airport Database to link a airport code to it's location
@@ -23,15 +25,16 @@ def create_airport_database():
     csv_buffer = io.BytesIO(r.content)
     z = zipfile.ZipFile(csv_buffer)
     with z:
-       with z.open("GlobalAirportDatabase.txt") as f:
-          airports = pd.read_csv(f, header=None, sep=':')
+        with z.open("GlobalAirportDatabase.txt") as f:
+            airports = pd.read_csv(f, header=None, sep=':')
 
-    airports = airports.rename(columns={1: 'Code', 2: 'AirportName', 3: 'City', 4: 'Country', 14: 'latitude',15:'longitude'})
+    airports = airports.rename(columns={1: 'Code', 2: 'AirportName', 3: 'City', 4: 'Country', 14: 'latitude',
+                                        15: 'longitude'})
     airports = airports[['Code', 'AirportName', 'City', 'Country', 'latitude', 'longitude']]
     # Filter airports with no Code (not very useful)
     airports = airports[~pd.isna(airports.Code)]
-    airports['geoloc']= airports.apply(lambda x: [x.latitude,x.longitude], axis=1)
-    airports['Code_sky']= airports.apply(lambda x: x.Code + '-sky', axis=1)
+    airports['geoloc'] = airports.apply(lambda x: [x.latitude, x.longitude], axis=1)
+    airports['Code_sky'] = airports.apply(lambda x: x.Code + '-sky', axis=1) #WHY???
 
     print(f'found {airports.shape[0]} airports, here is an example: \n {airports[airports.latitude!=0.0].sample()} ')
     return airports
@@ -46,11 +49,10 @@ def skyscanner_query_directions(query):
     arrival_point = query['query']['to']['coord']
     # extract departure date
     date_departure = query['query']['datetime']
-
     df_response = get_planes_from_skyscanner(date_departure, None, departure_point, arrival_point, details=True)
     if df_response.empty:
         return None
-    else :
+    else:
         return skyscanner_journeys(df_response)
 
 
@@ -59,9 +61,9 @@ def skyscanner_journeys(df_response, _id=0):
     df_response['price_step'] = df_response.PriceTotal_AR / df_response.nb_segments
     # Compute distance for each leg
     print(df_response.columns)
-    df_response['distance_step'] = df_response.apply(lambda x: distance(x.geoloc_origin_seg, x.geoloc_destination_seg).m, axis=1)
+    df_response['distance_step'] = df_response.apply(lambda x: distance(x.geoloc_origin_seg,
+                                                                        x.geoloc_destination_seg).m, axis=1)
     lst_journeys = list()
-
     # all itineraries :
     for itinerary_id in df_response.itinerary_id.unique():
         itinerary = df_response[df_response.itinerary_id == itinerary_id]
@@ -85,14 +87,19 @@ def skyscanner_journeys(df_response, _id=0):
                                 )
         lst_sections.append(step)
         i = i + 1
-        for index, leg in itinerary.sort_values(by = 'DepartureDateTime').iterrows():
+        for index, leg in itinerary.sort_values(by='DepartureDateTime').iterrows():
+            local_distance_m = leg.distance_step
+            local_range_km = get_range_km(local_distance_m)
+            local_emissions = calculate_co2_emissions(constants.TYPE_PLANE, '', constants.DEFAULT_PLANE_FUEL,
+                                                      constants.DEFAULT_NB_SEATS, local_range_km) * \
+                              constants.DEFAULT_NB_PASSENGERS * local_distance_m
             step = tmw.journey_step(i,
                                     _type=constants.TYPE_PLANE,
                                     label='',
                                     distance_m=leg.distance_step,
                                     duration_s=leg.Duration_seg * 60,
                                     price_EUR=[leg.price_step],
-                                    gCO2=0,
+                                    gCO2=local_emissions,
                                     departure_point = leg.geoloc_origin_seg,
                                     arrival_point = leg.geoloc_destination_seg,
                                     departure_stop_name=leg.Name_origin_seg,
@@ -106,12 +113,13 @@ def skyscanner_journeys(df_response, _id=0):
             i = i+1
             # add transfer steps
             if not pd.isna(leg.next_departure):
+                duration = dt.strptime(leg['next_departure'], '%Y-%m-%dT%H:%M:%S') - \
+                           dt.strptime(leg['ArrivalDateTime'], '%Y-%m-%dT%H:%M:%S')
                 step = tmw.journey_step(i,
                                         _type=constants.TYPE_TRANSFER,
                                         label='',
                                         distance_m=0,
-                                        duration_s=(dt.strptime(leg['next_departure'], '%Y-%m-%dT%H:%M:%S') - dt.strptime(leg['ArrivalDateTime'],
-                                                                                          '%Y-%m-%dT%H:%M:%S')).seconds,
+                                        duration_s=duration.seconds,
                                         price_EUR=[0],
                                         departure_point=leg.geoloc_destination_seg,
                                         arrival_point=leg.next_geoloc,
@@ -125,8 +133,7 @@ def skyscanner_journeys(df_response, _id=0):
                 lst_sections.append(step)
                 i = i+1
 
-        journey_sky = tmw.journey(_id,
-                          steps = lst_sections)
+        journey_sky = tmw.journey(_id, steps=lst_sections)
         lst_journeys.append(journey_sky)
 
         for journey in lst_journeys:
@@ -164,18 +171,18 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
     print(f'request session for {departure} to {arrival}')
     response = requests.request("POST", url, data=payload, headers=headers)
     # get session key
-    try :
+    try:
         print(response.headers)
         key = response.headers['Location'].split('/')[-1]
     except KeyError:
         # Retry calling API 3 times
-        try :
+        try:
             # Is there an error with the query ?
             error = response.json()['ValidationErrors']
             print(error)
             return pd.DataFrame()
         except KeyError:
-            if try_number<3:
+            if try_number < 3:
                 time.sleep(2)
                 get_planes_from_skyscanner(date_departure, date_return, departure, arrival,
                                            details=False, try_number=try_number+1)
@@ -216,15 +223,15 @@ def format_skyscanner_response(rep_json, one_way=False, segment_details=True, on
     places = places.merge(_AIRPORT_DF[['Code', 'geoloc']], on='Code')
     # print(f'we got {places.shape[0]} places')
     # We merge to get price for both the inbound and outbound legs
-    legs = legs.merge(itineraries[['itinerary_id', 'OutboundLegId', 'PriceTotal_AR']], how='left'
-                      , left_on='Id', right_on='OutboundLegId', suffixes=['', '_out'])
+    legs = legs.merge(itineraries[['itinerary_id', 'OutboundLegId', 'PriceTotal_AR']], how='left', left_on='Id',
+                      right_on='OutboundLegId', suffixes=['', '_out'])
     # filter only most relevant itineraries (2 cheapest + 2 fastest)
     limit = min(2, legs.shape[0])
-    legs = legs.sort_values(by = 'PriceTotal_AR').head(limit).append(legs.sort_values(by = 'Duration').head(limit))
+    legs = legs.sort_values(by='PriceTotal_AR').head(limit).append(legs.sort_values(by='Duration').head(limit))
 
     if not one_way:
-        legs = legs.merge(itineraries[['itinerary_id', 'InboundLegId', 'PriceTotal_AR']], how='left'
-                          , left_on='Id', right_on='InboundLegId', suffixes=['', '_in'])
+        legs = legs.merge(itineraries[['itinerary_id', 'InboundLegId', 'PriceTotal_AR']], how='left',
+                          left_on='Id', right_on='InboundLegId', suffixes=['', '_in'])
     # Filter out legs where there is no itinary associated (so no price)
     if only_with_price & one_way:
         legs = legs[(legs.Id.isin(itineraries.OutboundLegId.unique()))]
@@ -246,8 +253,8 @@ def format_skyscanner_response(rep_json, one_way=False, segment_details=True, on
     # If no details asked we stay at leg granularity
     if not segment_details:
         return legs[
-            ['itinerary_id', 'Directionality', 'Id', 'Arrival', 'Departure', 'Duration', 'JourneyMode', 'SegmentIds'
-                , 'nb_segments', 'PriceTotal_AR', 'Code', 'geoloc', 'Code_destination',
+            ['itinerary_id', 'Directionality', 'Id', 'Arrival', 'Departure', 'Duration', 'JourneyMode', 'SegmentIds',
+             'nb_segments', 'PriceTotal_AR', 'Code', 'geoloc', 'Code_destination',
              'geoloc_destination']].sort_values(by=['itinerary_id', 'Id'])
     # else we break it down to each segment
     else:
@@ -259,13 +266,14 @@ def format_skyscanner_response(rep_json, one_way=False, segment_details=True, on
         segments_rich = pandas_explode(legs, 'SegmentIds')
 
         # Add relevant segment info to the exploded df (already containing all the leg and itinary infos)
-        segments_rich = segments_rich.merge(segments, left_on='SegmentIds', right_on='Id', suffixes=['_global', '_seg'])
+        segments_rich = segments_rich.merge(segments, left_on='SegmentIds', right_on='Id',
+                                            suffixes=['_global', '_seg'])
         segments_rich = segments_rich.merge(places[['Id', 'Code', 'Type', 'Name', 'geoloc']],
-                                            left_on='DestinationStation_seg', right_on='Id'
-                                            , suffixes=['', '_destination_seg'])
+                                            left_on='DestinationStation_seg', right_on='Id',
+                                            suffixes=['', '_destination_seg'])
         segments_rich = segments_rich.merge(places[['Id', 'Code', 'Type', 'Name', 'geoloc']],
-                                            left_on='OriginStation_seg', right_on='Id'
-                                            , suffixes=['', '_origin_seg'])
+                                            left_on='OriginStation_seg', right_on='Id',
+                                            suffixes=['', '_origin_seg'])
         segments_rich = segments_rich.merge(carriers[['Id', 'Code']], left_on='Carrier', right_on='Id',
                                             suffixes=['', '_carrier'])
 
@@ -330,8 +338,8 @@ def pandas_explode(df, column_to_explode):
 def get_airports_from_geo_locs(geoloc_dep, geoloc_arrival):
     stops_tmp = _AIRPORT_DF.copy()
     # compute proxi for distance (since we only need to compare no need to take the earth curve into account...)
-    stops_tmp['distance_dep'] = stops_tmp.apply(lambda x: distance(geoloc_dep, x.geoloc).m, axis =1)
-    stops_tmp['distance_arrival'] = stops_tmp.apply(lambda x: distance(geoloc_arrival, x.geoloc).m, axis =1)
+    stops_tmp['distance_dep'] = stops_tmp.apply(lambda x: distance(geoloc_dep, x.geoloc).m, axis=1)
+    stops_tmp['distance_arrival'] = stops_tmp.apply(lambda x: distance(geoloc_arrival, x.geoloc).m, axis=1)
 
     # We get the 3 closest airports for departure and arrival
     airport_list = dict()
@@ -340,7 +348,16 @@ def get_airports_from_geo_locs(geoloc_dep, geoloc_arrival):
     return airport_list
 
 
-def main(departure=[48.3,2.3], arrival=[52.5170365,13.3888599], departure_date='2019-11-10'):
+def get_range_km(local_distance_m):
+    thousands_km = int(local_distance_m/1e6)
+    if thousands_km == 0:
+        range_km = str(thousands_km) + '-' + str(thousands_km + 1) + '000'
+    else:
+        range_km = str(thousands_km) + '000-' + str(thousands_km + 1) + '000'
+    return range_km
+
+
+def main(departure=[48.3, 2.3], arrival=[52.5170365, 13.3888599], departure_date='2019-11-10'):
     airports = get_airports_from_geo_locs(departure, arrival)
     all_responses = list()
     # Let's call the API for every couple airport departure and arrival
@@ -348,11 +365,11 @@ def main(departure=[48.3,2.3], arrival=[52.5170365,13.3888599], departure_date='
         for airport_arrival in airports['arrival']:
             print(f'from {airport_dep} to {airport_arrival}')
             json_query = {
-                'query':{
-                    'start':{
+                'query': {
+                    'start': {
                         'coord': airport_dep,
                     },
-                    'to':{
+                    'to': {
                         'coord': airport_arrival,
                     },
                     'datetime': departure_date
@@ -376,7 +393,5 @@ def main(departure=[48.3,2.3], arrival=[52.5170365,13.3888599], departure_date='
     return all_reponses_json
 
 
-
 if __name__ == '__main__':
     main()
-
