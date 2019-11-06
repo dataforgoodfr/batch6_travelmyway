@@ -17,6 +17,7 @@ from app import constants
 class journey:
     def __init__(self, _id, steps=[]):
         self.id = _id
+        self.category = '' # car/train/plane
         self.label = ''
         self.api_list = []
         self.score = 0
@@ -55,19 +56,19 @@ class journey:
         self.total_duration = 0
         self.total_price_EUR = 0
         self.total_gCO2 = 0
+        return self
     
     def update(self):
         self.score = 0
-        self.total_distance = sum(filter(None, [step.distance_m for step in self.steps]))
-        self.total_duration = sum(filter(None, [step.duration_s for step in self.steps]))
-        self.total_price_EUR = sum(filter(None, [sum(step.price_EUR) for step in self.steps]))
-        self.total_gCO2 = sum(filter(None, [step.gCO2 for step in self.steps]))
+        self.total_distance = sum(filter(None,[step.distance_m for step in self.steps]))
+        self.total_duration = sum(filter(None,[step.duration_s for step in self.steps]))
+        self.total_price_EUR = sum(filter(None,[sum(step.price_EUR) for step in self.steps]))
+        self.total_gCO2 = sum(filter(None,[step.gCO2 for step in self.steps]))
+        return self
     
-    def plot_map(self, center=(48.864716,2.349014), tiles='Stamen Toner', zoom_start=10):
-        map_params = {'tiles': tiles,
-                      'location': center,
-                      'zoom_start': zoom_start}
-        _map = folium.Map(**map_params)
+    def plot_map(self, center=(48.864716,2.349014), tiles = 'Stamen Toner', zoom_start = 4, _map=None):
+        import folium
+        _map = init_map(center, zoom_start) if _map == None else _map
 
         for step in self.steps:
             try:
@@ -117,21 +118,83 @@ class journey_step:
                 }
         return json
     
-    def init_map(self, center, tiles='Stamen Toner', zoom_start=10):
-        map_params = {'tiles': tiles,
-                      'location': center,
-                      'zoom_start': zoom_start}
-        _map = folium.Map(**map_params)
-        return _map
-    
-    def plot_map(self, center=(48.864716,2.349014), _map=None):
-        _map = self.init_map(center) if _map == None else _map
+    def plot_map(self, center=(48.864716,2.349014), zoom_start=4, _map=None):
+        import folium
+        _map = init_map(center, zoom_start) if _map == None else _map
         
         folium.features.GeoJson(data=self.geojson,
                         name=self.label,
                         overlay=True).add_to(_map)
         return _map
 
+class query:
+    def __init__(self, _id, start_point, end_point, datetime=None):
+        self.id = _id
+        self.start_point = start_point
+        self.end_point = end_point
+        self.datetime =  ''        # example of format (based on navitia): 20191012T063700
+
+    def to_json(self):
+        json = {'id':self.id,
+                 'start':self.start_point.to_json(),
+                 'end':self.end_point.to_json(),
+                 'datetime':self.datetime,
+                }
+        return json
+
+    def plot_navitia_coverage(self, center=(48.864716,2.349014), zoom_start = 4,_map=None):
+        import folium
+        _map = init_map(center, zoom_start) if _map == None else _map
+
+        _map = self.start_point.plot_navitia_coverage(_map=_map)
+        _map = self.end_point.plot_navitia_coverage(_map=_map)
+        return _map
+
+class point:
+    def __init__(self, address, near=False):
+        self.address = address
+        self.coord = geocode_address(address)  # [lon,lat]
+        self.navitia = self.navitia_coverage(self.coord[0], self.coord[1]) # [lon,lat]
+        self.near_flag = near
+        if near == True:
+            self.near_airports = None # TO BE COMPLETED --> [point, point...]
+            self.near_train_stations = None # TO BE COMPLETED --> [point, point...]
+            self.near_bus_stations = None # TO BE COMPLETED --> [point, point...]
+
+    def to_json(self):
+        json =  {
+                    'address':self.address,
+                    'coord':self.coord,
+                    'navitia':self.navitia,
+                }
+        if self.near_flag == True:
+            json['near_airports'] = self.near_airports
+            json['near_train_stations'] = self.near_train_stations
+            json['near_bus_stations'] = self.near_bus_stations
+        return json
+
+    def navitia_coverage(self, lon, lat):
+        coverage = navitia_coverage_gpspoint(lon, lat)
+        if coverage == False:
+            return False
+
+        cov_json = {
+            'name':coverage['regions'][0]['id'],
+            'polygon':coverage['regions'][0]['shape'],
+        }
+        return cov_json
+
+    def plot_navitia_coverage(self, center=(48.864716,2.349014), zoom_start = 4,_map=None):
+        import folium
+        _map = init_map(center, zoom_start) if _map == None else _map
+
+        if self.navitia != False:
+            folium.vector_layers.Polygon(locations=self.navitia['polygon'],
+                                tooltip=self.navitia['name'],
+                                ).add_to(_map)
+            folium.map.Marker(location=self.coord[::-1],
+                                tooltip=self.address).add_to(_map)
+        return _map
 
 """
 BASIC FUNCTIONS
@@ -147,37 +210,81 @@ def get_api_keys():
     return api_keys
 
 
+def init_map(center, zoom_start, tiles = 'Stamen Toner'):
+        import folium
+        map_params = {'tiles':tiles,
+              'location':center,
+              'zoom_start': zoom_start}
+        _map = folium.Map(**map_params)
+        return _map
+
 def geocode_address(address):
     '''
     address: string
     coord : [lon, lat]
     '''
     ORS_client = start_ORS_client()
-    coord = ORS_client.pelias_search(address, size=1)['features'][0]['geometry']['coordinates']
-    return coord
+    lon, lat = ORS_client.pelias_search(address,size=1)['features'][0]['geometry']['coordinates']
+    return lon, lat
 
+def point_in_polygon(point, polygon):
+    import shapely
+    from shapely.geometry import Polygon
+    poly = Polygon(((p[0],p[1])for p in polygon))
+    return True
 
-def create_query(start, to, datetime=''):
-    '''
-    :param start:
-    :param to:
-    :param datetime:
-    :return: json_query
-    '''
-    json_query = {
-        'query': {
-            'start': {
-                'address': start,
-                'coord': geocode_address(start),  # [lon,lat]
-            },
-            'to': {
-                'address': to,
-                'coord': geocode_address(to),
-            },
-            'datetime': datetime   # example of format (based on navitia): 20191012T063700
-            } 
+#def create_query(start, to, datetime=''):
+#    json_query = {
+#        'query':{
+#            'start':{
+#                'address':start,
+#                'coord':geocode_address(start),  # [lon,lat]
+#            },
+#            'to':{
+#                'address':to,
+#                'coord':geocode_address(to),
+#            },
+#            'datetime':datetime          # example of format (based on navitia): 20191012T063700
+#            } 
+#    }
+#    return json_query
+
+def get_CO2(travel_type, distance, param={}):
+    # Calculate CO2 emissions based on travel_type and distance
+    # Import csv database (ADEME)
+    # param = {col:value}
+    """
+    import pandas as pd
+    EF_filepath = 'EmissionFactor.csv'
+    df_EF = pd.read_csv(EF_filepath,sep=';')
+    
+    for col in param.keys():
+        df_EF = df_EF[df_EF[col] == param[col]]
+
+    print(df_EF)
+    print('ERROR get_CO2() --> param variable did not ') if df_EF.size!=1 else True
+    EF = df_EF[value]
+    """
+
+    dict_EF = {             # Emision factor (EF)
+        'walk':0.0,
+        'wait':0.0,
+        'car':0.255,
+        'bus':0.167,
+        'metro':0.006,
+        'tram':0.006,
+        'train':0.037,
+        'TGV':0.00369,
+        'plane':0.23,
     }
-    return json_query
+    try:
+        EF = dict_EF[travel_type]
+    except:
+        print('ERROR: travel_type "{}" is not listed in Emission Factor.'.format(travel_type))
+        print('Returning 0.0 kgCO2/passenger')
+        return 0
+    emission = EF * distance
+    return emission
 
 
 """
@@ -201,7 +308,10 @@ OPEN ROUTE SERVICES FUNCTIONS
 
 
 def start_ORS_client():
-    ORS_client = openrouteservice.Client(key=tmw_api_keys.ORS_api_key) # Specify your personal API key
+    import openrouteservice
+    api = get_api_keys()
+    ORS_api_key = api['ORS_api_key']
+    ORS_client = openrouteservice.Client(key=ORS_api_key) # Specify your personal API key
     return ORS_client
 
 
@@ -218,15 +328,21 @@ def ORS_profile(profile):
         }
     return dict_ORS_profile[profile]
 
-
-def ORS_query_directions(query, profile='driving-car', _id=0, geometry=True):
+def ORS_query_directions(start, end, profile='driving-car', _id=0, geometry=True):
     '''
+    start (class point)
+    end (class point)
     profile= ["driving-car", "driving-hgv", "foot-walking","foot-hiking", "cycling-regular", "cycling-road","cycling-mountain",
     "cycling-electric",]
     '''
     ORS_client = start_ORS_client()
-    coord = [query['query']['start']['coord'], query['query']['to']['coord']]
-    ORS_step = ORS_client.directions(coord, profile=profile, instructions=False, geometry=geometry)
+    coord = [start.coord, end.coord]
+    ORS_step = ORS_client.directions(
+        coord,
+        profile=profile,
+        instructions=False,
+        geometry=geometry,
+        )
     
     geojson = convert.decode_polyline(ORS_step['routes'][0]['geometry'])
 
@@ -249,20 +365,66 @@ NAVITIA FUNCTIONS
 
 def start_navitia_client():
     from navitia_client import Client
-    navitia_client = Client(user=tmw_api_keys.Navitia_api_key)
+    api = get_api_keys()
+    Navitia_api_key = api['Navitia_api_key']
+    navitia_client = Client(user=Navitia_api_key)
     return navitia_client
 
-
-def navitia_query_directions(query, _id=0):
+def navitia_query_directions(start, end, _id=0):
+    '''
+    start (class point)
+    end (class point)
+    '''
     navitia_client = start_navitia_client()
-    coord = [query['query']['start']['coord'], query['query']['to']['coord'] ]
+
+    if start.navitia['name'] != end.navitia['name']:    # region name (ex: idf-fr)
+        print('ERROR: NAVITIA query on 2 different regions')
     
-    url = 'coverage/fr-idf/journeys?from={};{}&to={};{}'.format(coord[0][0],coord[0][1],coord[1][0],coord[1][1])
-    # urm = url + '&data_freshness=base_schedule&max_nb_journeys=3'
+    start_coord = ";".join(map(str, start.coord))
+    end_coord = ";".join(map(str, end.coord)) 
+    url = 'coverage/{}/journeys?from={}&to={}'.format(start.navitia['name'], start_coord,end_coord)
+    url = url + '&data_freshness=base_schedule&max_nb_journeys=3'
+    
     step = navitia_client.raw(url, multipage=False)
 
     return step.json()
 
+def navitia_coverage_global():
+    navitia_client = start_navitia_client()
+    cov = navitia_client.raw('coverage', multipage=False, page_limit=10, verbose=True)
+    coverage = cov.json()
+    for i, region in enumerate(coverage['regions']):
+        coverage['regions'][i]['shape'] = navitia_geostr_to_polygon(region['shape'])
+    return coverage
+
+def navitia_coverage_plot(coverage):
+    import folium
+    _map = init_map(center=(48.864716,2.349014), zoom_start = 4)
+    for zone in coverage['regions']:
+        folium.vector_layers.PolyLine(locations=zone['shape'],         # start converage
+                            tooltip=zone['name'],
+                            smooth_factor=1,
+                            ).add_to(_map)
+    return _map
+
+def navitia_coverage_gpspoint(lon,lat):   # 
+    navitia_client = start_navitia_client()
+    cov = navitia_client.raw('coverage/{};{}'.format(lon,lat), multipage=False, page_limit=10, verbose=True)
+    coverage = cov.json()
+    try:
+        for i, region in enumerate(coverage['regions']):
+            coverage['regions'][i]['shape'] = navitia_geostr_to_polygon(region['shape'])
+    except:
+        print('ERROR: AREA NOT COVERED BY NAVITIA (lon:{},lat:{})'.format(lon,lat))
+        return False
+    return coverage
+
+def navitia_geostr_to_polygon(string):
+    import re
+    regex = "([-]?\d+\.\d+) ([-]?\d+\.\d+)"
+    r = re.findall(regex, string)
+    r = [(float(coord[1]), float(coord[0])) for coord in r]    # [ (lat, lon) , (), ()]
+    return r
 
 """
 https://doc.navitia.io/#journeys
@@ -273,11 +435,11 @@ type = 'waiting' / 'transfer' / 'public_transport' / 'street_network' / 'stay_in
 def navitia_journeys(json, _id=0):
     # all journeys loop
     lst_journeys = list()
-    for journey in json['journeys']:
+    for j in json['journeys']:
         i = _id
         # journey loop
         lst_sections = list()
-        for section in journey['sections']:
+        for section in j['sections']:
             try:
                 lst_sections.append(navitia_journeys_sections_type(section, _id=i))
             except:
@@ -285,7 +447,7 @@ def navitia_journeys(json, _id=0):
                 print('id: {}'.format(i))
                 print(section)
             i = i+1
-        lst_journeys.append(lst_sections)
+        lst_journeys.append(journey(_id, lst_sections))
     return lst_journeys
 
 
