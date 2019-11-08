@@ -4,15 +4,16 @@ INITIATE CLASSES
 import os
 import pandas as pd
 from datetime import datetime as dt
-from app import Trainline
-from app import Skyscanner
-from app import OuiBus
 import folium
-from app import tmw_api_keys
+import tmw_api_keys
 import openrouteservice
 from openrouteservice import convert
-from app import constants
+import constants
 
+import Trainline
+import Skyscanner
+import OuiBus
+import Navitia
 
 class journey:
     def __init__(self, _id, steps=[]):
@@ -76,6 +77,21 @@ class journey:
             except:
                 print('ERROR plot map: step id: {} / type: {}'.format(step.id, step.type))
         return _map
+
+    def add_steps(self, steps_to_add, start_end=True):
+        # if the steps are added at the beginning of the journey
+        if start_end:
+            nb_steps_to_add = len(steps_to_add)
+            # we update the ids of the steps to preserve the order of the whole journey
+            for step_old in self.steps:
+                step_old.id = step_old.id + nb_steps_to_add
+            self.steps = steps_to_add + self.steps
+        # if the steps are at the end of the journey
+        else :
+            nb_existing_steps = len(self.steps)
+            for step_new in steps_to_add:
+                step_new.id = step_new.id + nb_existing_steps
+            self.steps = self.steps + steps_to_add
 
 
 class journey_step:
@@ -291,15 +307,30 @@ def get_CO2(travel_type, distance, param={}):
 Build a multi-modal journey
 """
 # WIP WIP WIP
-def compute_complete_journey(departure_date = '2019-10-25T09:00:00+0200', geoloc_dep=[48.85,2.35], geoloc_arrival=[43.60,1.44]):
+def compute_complete_journey(departure_date = '2019-11-25T09:00:00+0200', geoloc_dep=[48.85,2.35], geoloc_arrival=[43.60,1.44]):
     # First we look for intercities journeys
     trainline_journeys = Trainline.main(departure_date, geoloc_dep, geoloc_arrival)
     skyscanner_journeys = Skyscanner.main(departure_date, geoloc_dep, geoloc_arrival)
-    ouibus_journey = OuiBus.main(departure_date, geoloc_dep, geoloc_arrival)
-    ors_step = ORS_query_directions(create_query(geoloc_dep, geoloc_arrival, departure_date))
+    ouibus_journeys = OuiBus.main(departure_date, geoloc_dep, geoloc_arrival)
+    # ors_step = ORS_query_directions(create_query(geoloc_dep, geoloc_arrival, departure_date))
 
+    all_journeys = trainline_journeys + skyscanner_journeys + ouibus_journeys
     # Then we call Navitia to get
-    return None
+    for interurban_journey in all_journeys:
+        start_to_station_steps = Navitia.navitia_query_directions([geoloc_dep,
+                                                                   interurban_journey.steps[0].departure_point])
+        station_to_arrival_steps = Navitia.navitia_query_directions([geoloc_arrival,
+                                                                     interurban_journey.steps[-1].arrival_point])
+        if (start_to_station_steps is not None) & (station_to_arrival_steps is not None):
+            interurban_journey.add_steps(start_to_station_steps[0], start_end=True)
+            print(f'arrival point is :{interurban_journey.steps[-1].arrival_point}')
+            interurban_journey.add_steps(station_to_arrival_steps[0], start_end=False)
+            interurban_journey.update()
+        else :
+            interurban_journey.reset()
+
+    # all_journeys = all_journeys + ors_step
+    return all_journeys
 
 
 """
@@ -356,7 +387,6 @@ def ORS_query_directions(start, end, profile='driving-car', _id=0, geometry=True
                         geojson=geojson,
                         )
     return step
-
 
 """
 NAVITIA FUNCTIONS
@@ -549,3 +579,30 @@ def navitia_journeys_correct(journey, json):
         return False
     
     return journey
+
+
+def main(departure_date = '2019-11-25', geoloc_dep=[48.85,2.35], geoloc_arrival=[43.59053,1.42299]):
+     all_trips = compute_complete_journey(departure_date, geoloc_dep, geoloc_arrival)
+
+     for i in all_trips:
+         print(i.to_json())
+
+    #station_to_arrival_steps = Navitia.navitia_query_directions([[43.59053, 1.42299], [43.661, 7.218]])
+    #print(f'type station_to_arrival_steps : {type(station_to_arrival_steps)}')
+    #if not station_to_arrival_steps:
+    #    print('popopopo')
+    #print(f'type station_to_arrival_steps[0 : {type(station_to_arrival_steps[0])}')
+    #print(f'station_to_arrival_steps : {station_to_arrival_steps}')
+    #print(f'station_to_arrival_steps[0] : {station_to_arrival_steps[0]}')
+    # station_to_arrival_steps = Navitia.navitia_query_directions([[48.85, 2.35], [48.835318, 2.380519]])
+    # print(type(station_to_arrival_steps))
+    # print(len(station_to_arrival_steps))
+    # print((station_to_arrival_steps))
+    # print(len(station_to_arrival_steps[0]))
+    # print((station_to_arrival_steps[0]))
+
+
+_PASSENGER = [{"id": 1,  "age": 30,  "price_currency": "EUR"}]
+
+if __name__ == '__main__':
+    main()
