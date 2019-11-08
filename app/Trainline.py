@@ -184,7 +184,7 @@ def trainline_journeys(df_response, _id=0):
         itinerary = df_response[df_response.id_global == itinerary_id]
         # boolean to know whether and when there will be a transfer after the leg
         itinerary['next_departure'] = itinerary.departure_date_seg.shift(-1)
-        itinerary['next_stop_name'] = itinerary.name_depart_seg.shift(1)
+        itinerary['next_stop_name'] = itinerary.name_depart_seg.shift(-1)
         itinerary['next_geoloc'] = itinerary.geoloc_depart_seg.shift(-1)
         i = _id
         lst_sections = list()
