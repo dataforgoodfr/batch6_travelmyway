@@ -33,8 +33,8 @@ def create_airport_database():
     airports = airports[['Code', 'AirportName', 'City', 'Country', 'latitude', 'longitude']]
     # Filter airports with no Code (not very useful)
     airports = airports[~pd.isna(airports.Code)]
-    airports['geoloc'] = airports.apply(lambda x: [x.latitude, x.longitude], axis=1)
-    airports['Code_sky'] = airports.apply(lambda x: x.Code + '-sky', axis=1) #WHY???
+    airports['geoloc'] = airports.apply(lambda x: [x.latitude,x.longitude], axis=1)
+    airports['Code_sky'] = airports.apply(lambda x: x.Code + '-sky', axis=1)
 
     print(f'found {airports.shape[0]} airports, here is an example: \n {airports[airports.latitude!=0.0].sample()} ')
     return airports
@@ -60,7 +60,6 @@ def skyscanner_journeys(df_response, _id=0):
     # affect a price to each leg
     df_response['price_step'] = df_response.PriceTotal_AR / df_response.nb_segments
     # Compute distance for each leg
-    print(df_response.columns)
     df_response['distance_step'] = df_response.apply(lambda x: distance(x.geoloc_origin_seg,
                                                                         x.geoloc_destination_seg).m, axis=1)
     lst_journeys = list()
@@ -68,9 +67,9 @@ def skyscanner_journeys(df_response, _id=0):
     for itinerary_id in df_response.itinerary_id.unique():
         itinerary = df_response[df_response.itinerary_id == itinerary_id]
         i = _id
-        # boolean to know whether and when there will be a transfert after the leg
-        itinerary['next_departure'] = itinerary.DepartureDateTime.shift(1)
-        itinerary['next_stop_name'] = itinerary.Name_origin_seg.shift(1)
+        # boolean to know whether and when there will be a transfer after the leg
+        itinerary['next_departure'] = itinerary.DepartureDateTime.shift(-1)
+        itinerary['next_stop_name'] = itinerary.Name_origin_seg.shift(-1)
         itinerary['next_geoloc'] = itinerary.geoloc_origin_seg.shift(-1)
         lst_sections = list()
         # We add a waiting period at the airport of 2 hours
@@ -91,8 +90,9 @@ def skyscanner_journeys(df_response, _id=0):
             local_distance_m = leg.distance_step
             local_range_km = get_range_km(local_distance_m)
             local_emissions = calculate_co2_emissions(constants.TYPE_PLANE, '', constants.DEFAULT_PLANE_FUEL,
-                                                      constants.DEFAULT_NB_SEATS, local_range_km) * \
-                              constants.DEFAULT_NB_PASSENGERS * local_distance_m
+                                                      constants.DEFAULT_NB_SEATS, local_range_km * \
+                                                    constants.DEFAULT_NB_PASSENGERS * local_distance_m)
+
             step = tmw.journey_step(i,
                                     _type=constants.TYPE_PLANE,
                                     label='',
@@ -288,7 +288,7 @@ def format_skyscanner_response(rep_json, one_way=False, segment_details=True, on
              'Id_global', 'PriceTotal_AR', 'nb_segments', 'ArrivalDateTime', 'DepartureDateTime',
              'Duration_seg', 'JourneyMode_seg', 'Name_origin_seg', 'Name',
              'Id', 'Code_origin_seg', 'geoloc_origin_seg', 'Code_destination_seg', 'geoloc_destination_seg',
-             'FlightNumber_rich']].sort_values(by=['itinerary_id', 'Id_global'])
+             'FlightNumber_rich']].drop_duplicates(subset='Id').sort_values(by=['itinerary_id', 'Id_global'])
 
 
 # Custom function to handle DF
@@ -337,6 +337,8 @@ def pandas_explode(df, column_to_explode):
 # Find the stops close to a geo point
 def get_airports_from_geo_locs(geoloc_dep, geoloc_arrival):
     stops_tmp = _AIRPORT_DF.copy()
+    print(f'inside get_airports_from_geo_locs geoloc_dep {geoloc_dep}')
+    print(f'inside get_airports_from_geo_locs geoloc_arrival {geoloc_arrival}')
     # compute proxi for distance (since we only need to compare no need to take the earth curve into account...)
     stops_tmp['distance_dep'] = stops_tmp.apply(lambda x: distance(geoloc_dep, x.geoloc).m, axis=1)
     stops_tmp['distance_arrival'] = stops_tmp.apply(lambda x: distance(geoloc_arrival, x.geoloc).m, axis=1)
@@ -357,13 +359,13 @@ def get_range_km(local_distance_m):
     return range_km
 
 
-def main(departure=[48.3, 2.3], arrival=[52.5170365, 13.3888599], departure_date='2019-11-10'):
+def main(departure_date='2019-11-10',departure=[48.3,2.3], arrival=[52.5170365,13.3888599]):
     airports = get_airports_from_geo_locs(departure, arrival)
     all_responses = list()
     # Let's call the API for every couple airport departure and arrival
     for airport_dep in airports['departure']:
         for airport_arrival in airports['arrival']:
-            print(f'from {airport_dep} to {airport_arrival}')
+            print(f'call Skyscanner from {airport_dep} to {airport_arrival}')
             json_query = {
                 'query': {
                     'start': {
@@ -377,20 +379,17 @@ def main(departure=[48.3, 2.3], arrival=[52.5170365, 13.3888599], departure_date
             }
             single_route = skyscanner_query_directions(json_query)
             if single_route is not None:
-                print(f'nombre de route {len(single_route)}')
-                print(single_route)
                 for trip in single_route:
-                    print(trip.to_json())
                     all_responses.append(trip)
-            print(f'all good for {airport_dep} to {airport_arrival}')
+            print(f'all good from {airport_dep} to {airport_arrival}')
 
     all_reponses_json = list()
     print(all_responses)
     for journey_sky in all_responses:
-        print(journey_sky.to_json())
+        #print(journey_sky.to_json())
         all_reponses_json.append(journey_sky.to_json())
 
-    return all_reponses_json
+    return all_responses
 
 
 if __name__ == '__main__':
