@@ -202,8 +202,8 @@ def ouibus_journeys(df_response, _id=0):
                                 duration_s=_STATION_WAITING_PERIOD,
                                 price_EUR=[0],
                                 gCO2=0,
-                                departure_point=itinerary.geoloc,
-                                arrival_point=itinerary.geoloc,
+                                departure_point=itinerary.geoloc.iloc[0],
+                                arrival_point=itinerary.geoloc.iloc[0],
                                 geojson=[],
                                 )
         lst_sections.append(step)
