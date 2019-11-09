@@ -1,19 +1,7 @@
 {
   "name": "travel-my-way",
-  "version": "0.1.0",
-  "private": true,
-  "dependencies": {
-    "@google/maps": "^1.0.2",
-    "eslint": "^6.6.0",
-    "eslint-config-airbnb": "^18.0.1",
-    "eslint-plugin-import": "^2.18.2",
-    "eslint-plugin-jsx-a11y": "^6.2.3",
-    "eslint-plugin-react": "^7.16.0",
-    "prettier": "^1.19.1",
-    "react": "^16.11.0",
-    "react-dates": "^21.3.2",
-    "react-dom": "^16.11.0"
-  },
+  "version": "0.0.0",
+  "license": "MIT",
   "devDependencies": {
     "@babel/core": "^7.7.2",
     "@babel/preset-react": "^7.7.0",
@@ -27,7 +15,8 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "lint": "eslint src"
   },
   "browserslist": {
     "production": [
