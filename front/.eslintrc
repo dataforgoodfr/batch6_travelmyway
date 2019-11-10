@@ -4,6 +4,7 @@
   "rules": {
     "prettier/prettier": "error",
     "jsx-a11y/href-no-hash": [0],
-    "space-before-function-paren": [0]
+    "space-before-function-paren": [0],
+    "jsx-quotes": [2, "prefer-double"]
   }
 }
