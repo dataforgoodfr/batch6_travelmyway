@@ -1,5 +1,5 @@
 #PATHS
-ADEME_LOC_DB_PATH = r'data\TMW_base_carbone.xlsx'
+ADEME_LOC_DB_PATH = r'data/TMW_base_carbone.xlsx'
 
 #CARBON DB HEADER
 TYPE_OF_TRANSPORT = "Type of transport"
@@ -21,6 +21,7 @@ TYPE_BIKE = "Bike"
 TYPE_WALK = "Walking"
 TYPE_TRANSFER = "Transfer"
 TYPE_TRAM = "Tram"
+TYPE_CAR = 'Car'
 
 # CITY SIZE
 SMALL_CITY = "< 150 000 inhabitants"
@@ -43,3 +44,4 @@ WAITING_PERIOD_OUIBUS = 15 * 60
 DEFAULT_NB_PASSENGERS = 1
 DEFAULT_PLANE_FUEL = "jet A1 (kérosène)"
 DEFAULT_NB_SEATS = '180-250'
+

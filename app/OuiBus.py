@@ -202,8 +202,8 @@ def ouibus_journeys(df_response, _id=0):
                                 duration_s=_STATION_WAITING_PERIOD,
                                 price_EUR=[0],
                                 gCO2=0,
-                                departure_point=itinerary.geoloc,
-                                arrival_point=itinerary.geoloc,
+                                departure_point=itinerary.geoloc.iloc[0],
+                                arrival_point=itinerary.geoloc.iloc[0],
                                 geojson=[],
                                 )
         lst_sections.append(step)
@@ -257,8 +257,8 @@ def ouibus_journeys(df_response, _id=0):
     return lst_journeys
 
 
-def main(departure_date='2019-11-25', geoloc_dep=[48.85, 2.35], geoloc_arrival=[43.2957547, -0.3685668]):
-    all_trips = compute_trips(departure_date, _PASSENGER, geoloc_dep, geoloc_arrival)
+def main(query):
+    all_trips = compute_trips(query.departure_date, _PASSENGER, query.start_point, query.end_point)
 
     for i in ouibus_journeys(all_trips):
         print(i.to_json())
