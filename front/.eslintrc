@@ -1,10 +1,17 @@
 {
-  "extends": ["standard-preact", "standard"],
+  "extends": ["airbnb", "prettier", "prettier/react"],
   "plugins": ["prettier"],
   "rules": {
-    "prettier/prettier": "error",
-    "jsx-a11y/href-no-hash": [0],
-    "space-before-function-paren": [0],
-    "jsx-quotes": [2, "prefer-double"]
+    "react/jsx-filename-extension": [
+      1,
+      {
+        "extensions": [".js", ".jsx"]
+      }
+    ],
+    "react/prop-types": 0,
+    "no-underscore-dangle": 0,
+    "import/imports-first": ["error", "absolute-first"],
+    "import/newline-after-import": "error",
+    "import/prefer-default-export": 0
   }
 }
