@@ -3,6 +3,7 @@ import pandas as pd
 from app import constants
 
 def calculate_co2_emissions(type_transport, type_city, fuel, nb_seats, nb_km):
+    path = os.path.join(os.getcwd(), constants.ADEME_LOC_DB_PATH)
     carbon_db = pd.read_excel(os.path.join(os.getcwd(), constants.ADEME_LOC_DB_PATH))
     select_type_transport = (carbon_db.loc[:, constants.TYPE_OF_TRANSPORT] == type_transport)
     index_db = select_type_transport

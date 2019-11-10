@@ -46,7 +46,7 @@ def update_trainline_stops(url=_STATIONS_CSV_FILE):
 
 _ALL_STATIONS = update_trainline_stops()
 
-passengers = [{'id': '3c29a998-270e-416b-83f0-936b606638da', 'age': 39,
+_PASSENGER = [{'id': '3c29a998-270e-416b-83f0-936b606638da', 'age': 39,
                'cards': [], 'label': '3c29a998-270e-416b-83f0-936b606638da'}]
 
 
@@ -312,16 +312,16 @@ def get_stops_from_geo_locs(geoloc_dep, geoloc_arrival, max_distance_km=50):
     return parent_station_id_list
 
 
-def main(departure_date = '2019-10-25T09:00:00+0200', geoloc_dep=[48.85, 2.35], geoloc_arrival=[43.60, 1.44]):
-    stops = get_stops_from_geo_locs(geoloc_dep, geoloc_arrival)
+def main(query):
+    stops = get_stops_from_geo_locs(query.start_point, query.end_point)
     # print(f'{len(stops.departure)} departure parent station found ')
     # print(f'{len(stops.arrival)} arrival parent station found ')
     detail_response = pd.DataFrame()
     for departure_station_id in stops['departure']:
         for arrival_station_id in stops['arrival']:
             print(f'call API with {departure_station_id}, and {arrival_station_id }')
-            detail_response = detail_response.append(search_for_all_fares(departure_date, int(departure_station_id),
-                                                                          int(arrival_station_id), passengers,
+            detail_response = detail_response.append(search_for_all_fares(query.departure_date, int(departure_station_id),
+                                                                          int(arrival_station_id), _PASSENGER,
                                                                           segment_details=True))
     all_journeys = trainline_journeys(detail_response)
     for i in all_journeys:

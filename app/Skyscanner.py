@@ -90,8 +90,8 @@ def skyscanner_journeys(df_response, _id=0):
             local_distance_m = leg.distance_step
             local_range_km = get_range_km(local_distance_m)
             local_emissions = calculate_co2_emissions(constants.TYPE_PLANE, '', constants.DEFAULT_PLANE_FUEL,
-                                                      constants.DEFAULT_NB_SEATS, local_range_km * \
-                                                    constants.DEFAULT_NB_PASSENGERS * local_distance_m)
+                                                      constants.DEFAULT_NB_SEATS, local_range_km) * \
+                                                    constants.DEFAULT_NB_PASSENGERS * local_distance_m
 
             step = tmw.journey_step(i,
                                     _type=constants.TYPE_PLANE,
@@ -359,8 +359,8 @@ def get_range_km(local_distance_m):
     return range_km
 
 
-def main(departure_date='2019-11-10',departure=[48.3,2.3], arrival=[52.5170365,13.3888599]):
-    airports = get_airports_from_geo_locs(departure, arrival)
+def main(query):
+    airports = get_airports_from_geo_locs(query.start_point, query.end_point)
     all_responses = list()
     # Let's call the API for every couple airport departure and arrival
     for airport_dep in airports['departure']:
@@ -374,7 +374,7 @@ def main(departure_date='2019-11-10',departure=[48.3,2.3], arrival=[52.5170365,1
                     'to': {
                         'coord': airport_arrival,
                     },
-                    'datetime': departure_date
+                    'datetime': query.departure_date
                     }
             }
             single_route = skyscanner_query_directions(json_query)
@@ -384,9 +384,7 @@ def main(departure_date='2019-11-10',departure=[48.3,2.3], arrival=[52.5170365,1
             print(f'all good from {airport_dep} to {airport_arrival}')
 
     all_reponses_json = list()
-    print(all_responses)
     for journey_sky in all_responses:
-        #print(journey_sky.to_json())
         all_reponses_json.append(journey_sky.to_json())
 
     return all_responses

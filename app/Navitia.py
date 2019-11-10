@@ -1,17 +1,13 @@
-import requests
 import pandas as pd
-import json
-from datetime import datetime as dt
-import copy
-from geopy.distance import distance
 import tmw_api_keys
 import TMW as tmw
 import constants
+import folium
 from navitia_client import Client
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
-from shapely.geometry.multipolygon import MultiPolygon
 import numpy as np
+import re
 
 
 def get_navitia_coverage(client):
@@ -82,63 +78,128 @@ def find_navita_coverage_for_points(point_from, point_to, df_cov):
     if not id_cov.empty:
         return id_cov.values[0]
     else:
-        return None
+        raise ValueError("ERROR: NAVITIA query on 2 different regions")
+
+
 
 """
-NAVITIA
-FUNCTIONS
+NAVITIA FUNCTIONS
 """
+
+
 def start_navitia_client():
-    from navitia_client import Client
-    navitia_client = Client(user='8ad3db27-5eec-473d-9ff6-50d35fdf0da6')
+    Navitia_api_key = tmw_api_keys.NAVITIA_API_KEY
+    navitia_client = Client(user=Navitia_api_key)
     return navitia_client
 
-def navitia_query_directions(coord, _id=0):
+
+def navitia_query_directions(query, _id=0):
+    '''
+    start (class point)
+    end (class point)
+    '''
     navitia_client = start_navitia_client()
-    #coord = [query['query']['start']['coord'], query['query']['to']['coord'] ]
-    cov_reg = find_navita_coverage_for_points(coord[0], coord[1], _NAVITIA_COV)
-    print(f'coverage region for navita is {cov_reg}')
-    print(f'coverage region for navita is {cov_reg}')
-    if cov_reg is not None:
-        url = f'coverage/{cov_reg}/journeys?from={coord[0][1]};{coord[0][0]}&to={coord[1][1]};{coord[1][0]}'
-        print(f'url to navitia is {url}')
-        # url = url + '&data_freshness=base_schedule&max_nb_journeys=3'
-        step = navitia_client.raw(url, multipage=False)
-        if step.status_code == 200:
-            return navitia_journeys(step.json())
-        else:
-            return None
+
+    try :
+        navitia_region = find_navita_coverage_for_points(query.start_point, query.end_point, _NAVITIA_COV)
+    except:
+        # coverage issue
+        return None
+    # if start.navitia['name'] != end.navitia['name']:  # region name (ex: idf-fr)
+    #     print('ERROR: NAVITIA query on 2 different regions')
+
+    # start_coord = ";".join(map(str, query.start_point))
+    # end_coord = ";".join(map(str, query.end_point))
+    start_coord = str(query.start_point[1]) + ";" + str(query.start_point[0])
+    end_coord = str(query.end_point[1]) + ";" + str(query.end_point[0])
+    url = f'coverage/{navitia_region}/journeys?from={start_coord}&to={end_coord}'
+    url = url + '&data_freshness=base_schedule&max_nb_journeys=3'
+
+    step = navitia_client.raw(url, multipage=False)
+
+    if step.status_code == 200:
+        return navitia_journeys(step.json())
 
     else:
-        ValueError('Navitia call between 2 coverage regions')
+        print(f'ERROR {step.status_code} from Navitia')
+        return None
 
+
+def navitia_coverage_global():
+    navitia_client = start_navitia_client()
+    cov = navitia_client.raw('coverage', multipage=False, page_limit=10, verbose=True)
+    coverage = cov.json()
+    for i, region in enumerate(coverage['regions']):
+        coverage['regions'][i]['shape'] = navitia_geostr_to_polygon(region['shape'])
+    return coverage
+
+
+def navitia_coverage_plot(coverage):
+    _map = init_map(center=(48.864716, 2.349014), zoom_start=4)
+    for zone in coverage['regions']:
+        folium.vector_layers.PolyLine(locations=zone['shape'],  # start converage
+                                      tooltip=zone['name'],
+                                      smooth_factor=1,
+                                      ).add_to(_map)
+    return _map
+
+
+def navitia_coverage_gpspoint(lon, lat):  #
+    navitia_client = start_navitia_client()
+    cov = navitia_client.raw('coverage/{};{}'.format(lon, lat), multipage=False, page_limit=10, verbose=True)
+    coverage = cov.json()
+    try:
+        for i, region in enumerate(coverage['regions']):
+            coverage['regions'][i]['shape'] = navitia_geostr_to_polygon(region['shape'])
+    except:
+        print('ERROR: AREA NOT COVERED BY NAVITIA (lon:{},lat:{})'.format(lon, lat))
+        return False
+    return coverage
+
+
+def navitia_geostr_to_polygon(string):
+    regex = "([-]?\d+\.\d+) ([-]?\d+\.\d+)"
+    r = re.findall(regex, string)
+    r = [(float(coord[1]), float(coord[0])) for coord in r]  # [ (lat, lon) , (), ()]
+    return r
+
+
+def point_in_polygon(point, polygon):
+    import shapely
+    from shapely.geometry import Polygon
+    poly = Polygon(((p[0],p[1])for p in polygon))
+    return True
 
 """
-https: // doc.navitia.io /  # journeys
+https://doc.navitia.io/#journeys
 type = 'waiting' / 'transfer' / 'public_transport' / 'street_network' / 'stay_in' / crow_fly
 """
+
+
 def navitia_journeys(json, _id=0):
     # all journeys loop
     lst_journeys = list()
-    for journey in json['journeys']:
+    try:
+        journeys = json['journeys']
+    except:
+        print('ERROR {}'.format(json['error']))
+        return None
+    for j in json['journeys']:
         i = _id
-
         # journey loop
         lst_sections = list()
-        for section in journey['sections']:
-            # print(f'pour la section {i}')
+        for section in j['sections']:
             try:
-                tmp = navitia_journeys_sections_type(section, _id=i)
-                lst_sections.append(tmp)
-                # print(f'le step correspondant est {tmp}')
+                lst_sections.append(navitia_journeys_sections_type(section, _id=i))
             except:
                 print('ERROR : ')
                 print('id: {}'.format(i))
-                # print(section)
-            i = i+1
-
-        lst_journeys.append(lst_sections)
+                print(section)
+            i = i + 1
+        lst_journeys.append(tmw.journey(_id, lst_sections))
     return lst_journeys
+
+
 
 def navitia_journeys_sections_type(json, _id=0):
     switcher_journeys_sections_type = {
@@ -147,11 +208,10 @@ def navitia_journeys_sections_type(json, _id=0):
         'waiting': navitia_journeys_sections_type_waiting,
         'transfer': navitia_journeys_sections_type_transfer,
     }
-    tyty = json['type']
-    #print(f'on a un type {tyty}')
     func = switcher_journeys_sections_type.get(json['type'], "Invalid navitia type")
     step = func(json, _id)
     return step
+
 
 def navitia_journeys_sections_type_public_transport(json, _id=0):
     display_information = json['display_informations']
@@ -161,7 +221,6 @@ def navitia_journeys_sections_type_public_transport(json, _id=0):
         display_information['name'],
         display_information['direction'],
     )
-    # print(f'publc transport call')
     step = tmw.journey_step(_id,
                         _type=display_information['network'].lower(),
                         label=label,
@@ -171,22 +230,21 @@ def navitia_journeys_sections_type_public_transport(json, _id=0):
                         gCO2=json['co2_emission']['value'],
                         geojson=json['geojson'],
                         )
-    # print(f'publc transport success')
     return step
+
 
 def navitia_journeys_sections_type_street_network(json, _id=0):
     mode = json['mode']
     mode_to_type = {
-        'walking':'walk',
-        'bike':'bike',
-        'car':'car',
+        'walking': constants.TYPE_WALK,
+        'bike': constants.TYPE_BIKE,
+        'car': constants.TYPE_CAR,
     }
     label = '{} FROM {} TO {}'.format(
         mode_to_type[mode],
         json['from']['name'],
         json['to']['name'],
     )
-    # print(f'street call')
     step = tmw.journey_step(_id,
                         _type=mode_to_type[mode],
                         label=label,
@@ -196,22 +254,17 @@ def navitia_journeys_sections_type_street_network(json, _id=0):
                         gCO2=json['co2_emission']['value'],
                         geojson=json['geojson'],
                         )
-    # print(f'street success')
     return step
+
 
 def navitia_journeys_sections_type_transfer(json, _id=0):
     mode = json['transfer_type']
     mode_to_type = {
-        'walking':'walk',
-        'bike':'bike',
-        'car':'car',
+        'walking': constants.TYPE_WALK,
+        'bike': constants.TYPE_BIKE,
+        'car': constants.TYPE_CAR,
     }
-    label = '{} FROM {} TO {}'.format(
-        mode_to_type[mode],
-        json['from']['name'],
-        json['to']['name'],
-    )
-    # print(f'transfer call')
+    label = '{} FROM {} TO {}'.format(mode_to_type[mode], json['from']['name'], json['to']['name'])
     step = tmw.journey_step(_id,
                         _type=mode_to_type[mode],
                         label=label,
@@ -221,13 +274,12 @@ def navitia_journeys_sections_type_transfer(json, _id=0):
                         gCO2=json['co2_emission']['value'],
                         geojson=json['geojson'],
                         )
-    # print(f'transfer success')
     return step
 
+
 def navitia_journeys_sections_type_waiting(json, _id=0):
-    # print(f'wait call')
     step = tmw.journey_step(_id,
-                        _type='wait',
+                        _type=constants.TYPE_WAIT,
                         label='wait',
                         distance_m=None,
                         duration_s=json['duration'],
@@ -235,13 +287,13 @@ def navitia_journeys_sections_type_waiting(json, _id=0):
                         gCO2=json['co2_emission']['value'],
                         geojson='',
                         )
-    # print(f'wait success')
     return step
+
 
 def navitia_journeys_correct(journey, json):
     try:
         if type(j) == journey:
-        	True
+            True
     except:
         print('ERROR function navitia_journeys_correct() - INPUT Not journey class')
         return False
