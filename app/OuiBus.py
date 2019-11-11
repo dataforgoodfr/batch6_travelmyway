@@ -4,14 +4,16 @@ import json
 from datetime import datetime as dt
 import copy
 from geopy.distance import distance
-import tmw_api_keys
-import TMW as tmw
-import constants
+from app import tmw_api_keys
+from app import TMW as tmw
+from app import constants
+from app.co2_emissions import calculate_co2_emissions
 
 pd.set_option('display.max_columns', 999)
 pd.set_option('display.width', 1000)
 
 _STATION_WAITING_PERIOD = constants.WAITING_PERIOD_OUIBUS
+
 
 def pandas_explode(df, column_to_explode):
     """
@@ -128,13 +130,13 @@ def format_ouibus_response(df_response):
     response_rich['departure_seg'] = pd.to_datetime(response_rich.apply(lambda x: x['legs']['departure'], axis=1))
     response_rich['arrival_seg'] = pd.to_datetime(response_rich.apply(lambda x: x['legs']['arrival'], axis=1))
     response_rich['bus_number'] = response_rich.apply(lambda x: x['legs']['bus_number'], axis=1)
-    response_rich = response_rich.merge(_ALL_BUS_STOPS[['id', 'geoloc', 'short_name']], left_on = 'origin_id_seg',
-                                        right_on = 'id', suffixes=['','_origin_seg'])
-    response_rich = response_rich.merge(_ALL_BUS_STOPS[['id', 'geoloc', 'short_name']], left_on = 'destination_id_seg',
-                                        right_on = 'id', suffixes=['','_destination_seg'])
+    response_rich = response_rich.merge(_ALL_BUS_STOPS[['id', 'geoloc', 'short_name']], left_on='origin_id_seg',
+                                        right_on='id', suffixes=['', '_origin_seg'])
+    response_rich = response_rich.merge(_ALL_BUS_STOPS[['id', 'geoloc', 'short_name']], left_on='destination_id_seg',
+                                        right_on='id', suffixes=['', '_destination_seg'])
     # filter only most relevant itineraries (2 cheapest + 2 fastest)
     limit = min(2, response_rich.shape[0])
-    response_rich = response_rich.sort_values(by = 'price_cents').head(limit).append(response_rich.sort_values(by = 'duration_total').head(limit))
+    response_rich = response_rich.sort_values(by='price_cents').head(limit).append(response_rich.sort_values(by='duration_total').head(limit))
 
     return response_rich
 
@@ -157,7 +159,7 @@ def compute_trips(date, passengers, geoloc_origin, geoloc_destination):
         for destination_meta_gare_id in destination_meta_gare_ids:
             # print(f'from {origin_meta_gare_id} to {destination_meta_gare_id}')
             # make sure we don't call the API for a useless trip
-            if (origin_meta_gare_id != destination_meta_gare_id):
+            if origin_meta_gare_id != destination_meta_gare_id:
                 all_trips = all_trips.append(
                     search_for_all_fares(date, origin_meta_gare_id, destination_meta_gare_id, passengers))
 
@@ -200,20 +202,23 @@ def ouibus_journeys(df_response, _id=0):
                                 duration_s=_STATION_WAITING_PERIOD,
                                 price_EUR=[0],
                                 gCO2=0,
-                                departure_point=itinerary.geoloc,
-                                arrival_point=itinerary.geoloc,
+                                departure_point=itinerary.geoloc.iloc[0],
+                                arrival_point=itinerary.geoloc.iloc[0],
                                 geojson=[],
                                 )
         lst_sections.append(step)
         i = i + 1
         for index, leg in itinerary.iterrows():
+            local_distance_m = leg.distance_step
+            local_emissions = calculate_co2_emissions(constants.TYPE_COACH, constants.BIG_CITY, '', '', '')*\
+                              constants.DEFAULT_NB_PASSENGERS*local_distance_m
             step = tmw.journey_step(i,
                                     _type=constants.TYPE_COACH,
                                     label='',
-                                    distance_m=leg.distance_step,
+                                    distance_m=local_distance_m,
                                     duration_s=(leg.arrival_seg - leg.departure_seg).seconds,
                                     price_EUR=[leg.price_step],
-                                    gCO2=0,
+                                    gCO2=local_emissions,
                                     departure_point=leg.geoloc_origin_seg,
                                     arrival_point=leg.geoloc_destination_seg,
                                     departure_stop_name=leg.short_name_origin_seg,
@@ -230,10 +235,10 @@ def ouibus_journeys(df_response, _id=0):
                 step = tmw.journey_step(i,
                                         _type=constants.TYPE_TRANSFER,
                                         label='',
-                                        distance_m=distance(leg.geoloc_arrival_seg,leg.next_geoloc).m,
-                                        duration_s=(leg['next_departure'] - leg['arrival_date_seg']).seconds,
+                                        distance_m=distance(leg.geoloc_destination_seg,leg.next_geoloc).m,
+                                        duration_s=(leg['next_departure'] - leg['arrival_seg']).seconds,
                                         price_EUR=[0],
-                                        departure_point=leg.geoloc_arrival_seg,
+                                        departure_point=leg.geoloc_destination_seg,
                                         arrival_point=leg.next_geoloc,
                                         departure_stop_name=leg.short_name_destination_seg,
                                         arrival_stop_name=leg.next_stop_name,
@@ -243,8 +248,7 @@ def ouibus_journeys(df_response, _id=0):
                 lst_sections.append(step)
                 i = i + 1
 
-        journey_ouibus = tmw.journey(_id,
-                                  steps=lst_sections)
+        journey_ouibus = tmw.journey(_id, steps=lst_sections)
         lst_journeys.append(journey_ouibus)
 
         # for journey in lst_journeys:
@@ -253,11 +257,12 @@ def ouibus_journeys(df_response, _id=0):
     return lst_journeys
 
 
-def main(departure_date = '2019-11-25', geoloc_dep=[48.85,2.35], geoloc_arrival=[43.2957547,-0.3685668]):
-    all_trips = compute_trips(departure_date, _PASSENGER, geoloc_dep, geoloc_arrival)
+def main(query):
+    all_trips = compute_trips(query.departure_date, _PASSENGER, query.start_point, query.end_point)
 
     for i in ouibus_journeys(all_trips):
         print(i.to_json())
+    return ouibus_journeys(all_trips)
 
 
 _ALL_BUS_STOPS = update_stop_list()
@@ -265,4 +270,5 @@ _PASSENGER = [{"id": 1,  "age": 30,  "price_currency": "EUR"}]
 
 if __name__ == '__main__':
     main()
+
 

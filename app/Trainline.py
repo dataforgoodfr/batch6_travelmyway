@@ -3,10 +3,11 @@ import pandas as pd
 import copy
 import json
 import io
-import TMW as tmw
+from app import TMW as tmw
 from datetime import datetime as dt
 from geopy.distance import distance
-import constants
+from app import constants
+from app.co2_emissions import calculate_co2_emissions
 
 # Get all train and bus station from trainline thanks to https://github.com/tducret/trainline-python
 _STATIONS_CSV_FILE = "https://raw.githubusercontent.com/trainline-eu/stations/master/stations.csv"
@@ -45,7 +46,7 @@ def update_trainline_stops(url=_STATIONS_CSV_FILE):
 
 _ALL_STATIONS = update_trainline_stops()
 
-passengers = [{'id': '3c29a998-270e-416b-83f0-936b606638da', 'age': 39,
+_PASSENGER = [{'id': '3c29a998-270e-416b-83f0-936b606638da', 'age': 39,
                'cards': [], 'label': '3c29a998-270e-416b-83f0-936b606638da'}]
 
 
@@ -183,7 +184,7 @@ def trainline_journeys(df_response, _id=0):
         itinerary = df_response[df_response.id_global == itinerary_id]
         # boolean to know whether and when there will be a transfer after the leg
         itinerary['next_departure'] = itinerary.departure_date_seg.shift(-1)
-        itinerary['next_stop_name'] = itinerary.name_depart_seg.shift(1)
+        itinerary['next_stop_name'] = itinerary.name_depart_seg.shift(-1)
         itinerary['next_geoloc'] = itinerary.geoloc_depart_seg.shift(-1)
         i = _id
         lst_sections = list()
@@ -202,14 +203,16 @@ def trainline_journeys(df_response, _id=0):
         lst_sections.append(step)
         i = i + 1
         for index, leg in itinerary.iterrows():
-
+            local_distance_m = distance(leg.geoloc_depart_seg, leg.geoloc_arrival_seg).m
+            local_emissions = calculate_co2_emissions(constants.TYPE_TRAIN, '', '', '', '') * \
+                              constants.DEFAULT_NB_PASSENGERS * local_distance_m
             step = tmw.journey_step(i,
                                     _type=tranportation_mean_to_type[leg.transportation_mean],
                                     label='',
-                                    distance_m=distance(leg.geoloc_depart_seg, leg.geoloc_arrival_seg).m,
+                                    distance_m=local_distance_m,
                                     duration_s=(leg.arrival_date_seg - leg.departure_date_seg).seconds,
                                     price_EUR=[leg.price_step],
-                                    gCO2=0,
+                                    gCO2=local_emissions,
                                     departure_point=leg.geoloc_depart_seg,
                                     arrival_point=leg.geoloc_arrival_seg,
                                     departure_stop_name=leg.name_depart_seg,
@@ -294,7 +297,7 @@ def pandas_explode(df, column_to_explode):
 
 
 # Find the stops close to a geo point
-def get_stops_from_geo_locs(geoloc_dep, geoloc_arrival, max_distance_km = 50):
+def get_stops_from_geo_locs(geoloc_dep, geoloc_arrival, max_distance_km=50):
     stops_tmp = _ALL_STATIONS.copy()
     # compute proxi for distance (since we only need to compare no need to take the earth curve into account...)
     stops_tmp['distance_dep'] = stops_tmp.apply(lambda x: distance(geoloc_dep, x.geoloc).m, axis =1)
@@ -309,21 +312,23 @@ def get_stops_from_geo_locs(geoloc_dep, geoloc_arrival, max_distance_km = 50):
     return parent_station_id_list
 
 
-def main(departure_date = '2019-10-25T09:00:00+0200', geoloc_dep=[48.85,2.35], geoloc_arrival=[43.60,1.44]):
-    stops = get_stops_from_geo_locs(geoloc_dep, geoloc_arrival)
+def main(query):
+    stops = get_stops_from_geo_locs(query.start_point, query.end_point)
     # print(f'{len(stops.departure)} departure parent station found ')
     # print(f'{len(stops.arrival)} arrival parent station found ')
     detail_response = pd.DataFrame()
     for departure_station_id in stops['departure']:
         for arrival_station_id in stops['arrival']:
             print(f'call API with {departure_station_id}, and {arrival_station_id }')
-            detail_response = detail_response.append(search_for_all_fares(departure_date, int(departure_station_id), int(arrival_station_id)
-                                                                          , passengers, segment_details=True))
+            detail_response = detail_response.append(search_for_all_fares(query.departure_date, int(departure_station_id),
+                                                                          int(arrival_station_id), _PASSENGER,
+                                                                          segment_details=True))
     all_journeys = trainline_journeys(detail_response)
     for i in all_journeys:
         print(i.to_json())
 
     return all_journeys
+
 
 if __name__ == '__main__':
     main()
