@@ -1,8 +1,8 @@
 import pandas as pd
-import tmw_api_keys
-import TMW as tmw
-import constants
-import folium
+from app import tmw_api_keys
+from app import TMW as tmw
+from app import constants
+# import folium
 from navitia_client import Client
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
