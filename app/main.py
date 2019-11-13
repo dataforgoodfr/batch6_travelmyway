@@ -1,9 +1,9 @@
-import Trainline
-import Skyscanner
-import OuiBus
-import Navitia
-import ORS
-import TMW as tmw
+from app import Trainline
+from app import Skyscanner
+from app import OuiBus
+from app import Navitia
+from app import ORS
+from app import TMW as tmw
 
 
 """
