@@ -2,7 +2,7 @@
 INITIATE CLASSES
 """
 from datetime import datetime as dt
-import folium
+# import folium
 
 
 class journey:
@@ -119,7 +119,7 @@ class journey_step:
                 'arrival_date': self.arrival_date,
                 'trip_code': self.trip_code,
                 'gCO2': self.gCO2,
-                'geojson': self.geojson,
+                # 'geojson': self.geojson,
                 }
         return json
     
