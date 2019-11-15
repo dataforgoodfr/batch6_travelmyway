@@ -3,11 +3,11 @@ import pandas as pd
 import copy
 import json
 import io
-from app import TMW as tmw
+import TMW as tmw
 from datetime import datetime as dt
 from geopy.distance import distance
-from app import constants
-from app.co2_emissions import calculate_co2_emissions
+import constants
+from co2_emissions import calculate_co2_emissions
 
 # Get all train and bus station from trainline thanks to https://github.com/tducret/trainline-python
 _STATIONS_CSV_FILE = "https://raw.githubusercontent.com/trainline-eu/stations/master/stations.csv"
@@ -83,7 +83,7 @@ def search_for_all_fares(date, origin_id, destination_id, passengers, include_bu
                        headers=headers,
                        data=post_data)
 
-    print(f'API call duration {dt.now() - tmp}')
+    # print(f'API call duration {dt.now() - tmp}')
 
     return format_trainline_response(ret.json(), segment_details=segment_details)
 
@@ -179,7 +179,7 @@ def trainline_journeys(df_response, _id=0):
     }
     lst_journeys = list()
     # all itineraries :
-    print(f'nb itinerary : {df_response.id_global.nunique()}')
+    # print(f'nb itinerary : {df_response.id_global.nunique()}')
     for itinerary_id in df_response.id_global.unique():
         itinerary = df_response[df_response.id_global == itinerary_id]
         # boolean to know whether and when there will be a transfer after the leg
@@ -319,13 +319,13 @@ def main(query):
     detail_response = pd.DataFrame()
     for departure_station_id in stops['departure']:
         for arrival_station_id in stops['arrival']:
-            print(f'call API with {departure_station_id}, and {arrival_station_id }')
+            print(f'call Trainline API from {departure_station_id}, to {arrival_station_id }')
             detail_response = detail_response.append(search_for_all_fares(query.departure_date, int(departure_station_id),
                                                                           int(arrival_station_id), _PASSENGER,
                                                                           segment_details=True))
     all_journeys = trainline_journeys(detail_response)
-    for i in all_journeys:
-        print(i.to_json())
+    # for i in all_journeys:
+    #     print(i.to_json())
 
     return all_journeys
 

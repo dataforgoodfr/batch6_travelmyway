@@ -3,13 +3,13 @@ import pandas as pd
 import copy
 import zipfile
 import io
-from app import TMW as tmw
+import TMW as tmw
 from datetime import datetime as dt
 from geopy.distance import distance
-from app import tmw_api_keys
+import tmw_api_keys
 import time
-from app import constants
-from app.co2_emissions import calculate_co2_emissions
+import constants
+from co2_emissions import calculate_co2_emissions
 
 pd.set_option('display.max_columns', 999)
 pd.set_option('display.width', 1000)
@@ -168,11 +168,11 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
         'content-type': "application/x-www-form-urlencoded"
     }
     # create session
-    print(f'request session for {departure} to {arrival}')
+    # print(f'request session for {departure} to {arrival}')
     response = requests.request("POST", url, data=payload, headers=headers)
     # get session key
     try:
-        print(response.headers)
+        # print(response.headers)
         key = response.headers['Location'].split('/')[-1]
     except KeyError:
         # Retry calling API 3 times
@@ -197,8 +197,12 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
     }
 
     response = requests.request("GET", url, headers=headers, params=querystring)
-    print('le statut de la reponse est ' + response.json()['Status'])
-    return format_skyscanner_response(response.json(), one_way, details)
+    # print('le statut de la reponse est ' + response.json()['Status'])
+    if len(response.json()['Legs']) > 0:
+        return format_skyscanner_response(response.json(), one_way, details)
+    else :
+        # print(f'no flight found lets move on {response}')
+        return pd.DataFrame()
 
 
 def format_skyscanner_response(rep_json, one_way=False, segment_details=True, only_with_price=True):
@@ -337,8 +341,6 @@ def pandas_explode(df, column_to_explode):
 # Find the stops close to a geo point
 def get_airports_from_geo_locs(geoloc_dep, geoloc_arrival):
     stops_tmp = _AIRPORT_DF.copy()
-    print(f'inside get_airports_from_geo_locs geoloc_dep {geoloc_dep}')
-    print(f'inside get_airports_from_geo_locs geoloc_arrival {geoloc_arrival}')
     # compute proxi for distance (since we only need to compare no need to take the earth curve into account...)
     stops_tmp['distance_dep'] = stops_tmp.apply(lambda x: distance(geoloc_dep, x.geoloc).m, axis=1)
     stops_tmp['distance_arrival'] = stops_tmp.apply(lambda x: distance(geoloc_arrival, x.geoloc).m, axis=1)
@@ -381,7 +383,7 @@ def main(query):
             if single_route is not None:
                 for trip in single_route:
                     all_responses.append(trip)
-            print(f'all good from {airport_dep} to {airport_arrival}')
+            # print(f'all good from {airport_dep} to {airport_arrival}')
 
     all_reponses_json = list()
     for journey_sky in all_responses:

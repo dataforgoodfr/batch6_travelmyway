@@ -1,6 +1,7 @@
 import openrouteservice
 from openrouteservice import convert
-from app import constants
+import constants
+import tmw_api_keys
 
 """
 OPEN ROUTE SERVICES FUNCTIONS
@@ -8,7 +9,7 @@ OPEN ROUTE SERVICES FUNCTIONS
 
 
 def start_ORS_client():
-    ORS_api_key = constants.ORS_API_KEY
+    ORS_api_key = tmw_api_keys.ORS_API_KEY
     ORS_client = openrouteservice.Client(key=ORS_api_key) # Specify your personal API key
     return ORS_client
 
