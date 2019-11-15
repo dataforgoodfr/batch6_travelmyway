@@ -4,10 +4,10 @@ import json
 from datetime import datetime as dt
 import copy
 from geopy.distance import distance
-from app import tmw_api_keys
-from app import TMW as tmw
-from app import constants
-from app.co2_emissions import calculate_co2_emissions
+import tmw_api_keys
+import TMW as tmw
+import constants
+from co2_emissions import calculate_co2_emissions
 
 pd.set_option('display.max_columns', 999)
 pd.set_option('display.width', 1000)
@@ -96,7 +96,7 @@ def search_for_all_fares(date, origin_id, destination_id, passengers):
     }
     timestamp = dt.now()
     r = requests.post('https://api.idbus.com/v1/search', headers=headers, data=json.dumps(data))
-    print(dt.now() - timestamp)
+    # print(dt.now() - timestamp)
     try:
         return pd.DataFrame.from_dict(r.json()['trips'])
     except:
@@ -157,7 +157,7 @@ def compute_trips(date, passengers, geoloc_origin, geoloc_destination):
     all_trips = pd.DataFrame()
     for origin_meta_gare_id in origin_meta_gare_ids:
         for destination_meta_gare_id in destination_meta_gare_ids:
-            # print(f'from {origin_meta_gare_id} to {destination_meta_gare_id}')
+            print(f'call OuiBus API from {origin_meta_gare_id} to {destination_meta_gare_id}')
             # make sure we don't call the API for a useless trip
             if origin_meta_gare_id != destination_meta_gare_id:
                 all_trips = all_trips.append(
@@ -165,8 +165,8 @@ def compute_trips(date, passengers, geoloc_origin, geoloc_destination):
 
     # Enrich with stops info
     if all_trips.empty:
-        print('no trip found')
-        return 'No trips found'
+        print('no trip found from OuiBus')
+        return pd.DataFrame()
 
     all_trips = all_trips.merge(_ALL_BUS_STOPS[['id', 'geoloc', 'short_name']],
                                 left_on='origin_id', right_on='id', suffixes=['', '_origin'])
@@ -262,7 +262,11 @@ def main(query):
 
     for i in ouibus_journeys(all_trips):
         print(i.to_json())
-    return ouibus_journeys(all_trips)
+
+    if all_trips.empty:
+        return None
+    else:
+        return ouibus_journeys(all_trips)
 
 
 _ALL_BUS_STOPS = update_stop_list()

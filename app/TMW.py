@@ -34,10 +34,10 @@ class journey:
                 'total_price_EUR': self.total_price_EUR,
                 'departure_point': self.departure_point,
                 'arrival_point': self.arrival_point,
-                'departure_date': self.departure_date,
-                'arrival_date': self.arrival_date,
+                'departure_date': str(self.departure_date),
+                'arrival_date': str(self.arrival_date),
                 'total_gCO2': self.total_gCO2,
-                'journey': [step.to_json() for step in self.steps]
+                'journey_steps': [step.to_json() for step in self.steps]
                 }
         return json
     
@@ -115,8 +115,8 @@ class journey_step:
                 'arrival_point': self.arrival_point,
                 'departure_stop_name': self.departure_stop_name,
                 'arrival_stop_name': self.arrival_stop_name,
-                'departure_date': self.departure_date,
-                'arrival_date': self.arrival_date,
+                'departure_date': str(self.departure_date),
+                'arrival_date': str(self.arrival_date),
                 'trip_code': self.trip_code,
                 'gCO2': self.gCO2,
                 # 'geojson': self.geojson,
