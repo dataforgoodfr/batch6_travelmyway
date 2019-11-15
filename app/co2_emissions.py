@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from app import constants
+import constants
 
 def calculate_co2_emissions(type_transport, type_city, fuel, nb_seats, nb_km):
     path = os.path.join(os.getcwd(), constants.ADEME_LOC_DB_PATH)
