@@ -1,6 +1,5 @@
 import React from 'react'
 import SearchContainer from './searchPage/SearchContainer'
-import './App.css'
 
 function App() {
   return (

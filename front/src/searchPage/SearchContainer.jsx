@@ -5,7 +5,7 @@ import AutocompleteAddress from './AutocompleteAddress'
 function SearchContainer() {
   return (
     <div>
-      <AutocompleteAddress />
+      {/* <AutocompleteAddress /> Need a google API key in index.html to work */}
       <DatePicker />
     </div>
   )

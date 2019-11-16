@@ -10,11 +10,11 @@ class AutocompleteAddress extends Component {
     }
   }
 
-  handleChange = address => {
+  handleChange(address) {
     this.setState({ address })
   }
 
-  handleSelect = address => {
+  handleSelect(address) {
     geocodeByAddress(address)
       .then(results => getLatLng(results[0]))
       .then(latLng => console.log('Success', latLng))
