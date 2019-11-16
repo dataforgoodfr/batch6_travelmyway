@@ -1,0 +1,14 @@
+// GLOBAL
+
+@import './global/variables';
+@import './global/fonts';
+@import './global/mixins';
+@import './global/common';
+
+// BLOCS
+@import './blocs/home';
+@import './blocs/_results';
+
+//COMPONENTS
+@import './components/navbar';
+@import './components/searchbar';

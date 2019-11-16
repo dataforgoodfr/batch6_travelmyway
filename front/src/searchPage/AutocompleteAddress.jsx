@@ -10,11 +10,11 @@ class AutocompleteAddress extends Component {
     }
   }
 
-  handleChange(address) {
+  handleChange = address => {
     this.setState({ address })
   }
 
-  handleSelect(address) {
+  handleSelect = address => {
     geocodeByAddress(address)
       .then(results => getLatLng(results[0]))
       .then(latLng => console.log('Success', latLng))
@@ -33,8 +33,7 @@ class AutocompleteAddress extends Component {
             <div>
               <input
                 {...getInputProps({
-                  placeholder: 'Search Places ...',
-                  className: 'location-search-input'
+                  placeholder: 'Search Places ...'
                 })}
               />
               <div className="autocomplete-dropdown-container">

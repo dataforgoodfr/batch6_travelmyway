@@ -1,10 +1,12 @@
 import React from 'react'
+import Header from './components/Header'
 import SearchContainer from './searchPage/SearchContainer'
+import './style/main.scss'
 
 function App() {
   return (
     <div>
-      <header>Travel my way</header>
+      <Header />
       <SearchContainer />
     </div>
   )

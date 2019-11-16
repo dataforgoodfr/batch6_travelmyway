@@ -28,14 +28,18 @@ module.exports = {
             loader: 'file-loader',
             options: {
               outputPath: 'assets',
-              publicPath: 'dist/assets'
+              publicPath: 'assets'
             }
           }
         ]
       },
       {
-        test: /\.css$/,
-        use: ['style-loader', 'css-loader']
+        test: /\.(s[ac]ss|css)$/i,
+        use: ['style-loader', 'css-loader', 'sass-loader']
+      },
+      {
+        test: /\.svg$/,
+        loader: 'svg-inline-loader'
       }
     ]
   },
