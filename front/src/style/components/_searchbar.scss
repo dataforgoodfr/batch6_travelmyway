@@ -1,0 +1,87 @@
+.searchbar {
+  width: 70%;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: white;
+  border-radius: 5px;
+  box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.3);
+
+  &_top {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    padding: 5px;
+
+    .select-values {
+      margin-right: 30px;
+
+      select {
+        border: none;
+        background-color: transparent;
+        color: grey;
+        font-family: $font;
+        font-size: 14px;
+      }
+    }
+  }
+
+  &_bottom {
+    padding: 5px;
+
+    form {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      input {
+        margin: 5px;
+        font-family: $font;
+        color: grey;
+        font-size: 14px;
+      }
+
+      .autocomplete-address {
+        min-width: 250px;
+        position: relative;
+        padding: 15px 15px 15px 40px;
+        width: 20%;
+        border-radius: 5px;
+        border: 0.5px solid lightgrey;
+        background: url('../img/svg/localisation.svg');
+        background-size: 6%;
+        background-repeat: no-repeat;
+        background-position: 5% 50%;
+      }
+
+      .submit {
+        position: relative;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: #2e3747;
+        background-image: url('../img/svg/search.svg');
+        background-size: 50%;
+        background-position: center;
+        background-repeat: no-repeat;
+      }
+
+      .date {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        min-width: 250px;
+        padding: 15px 15px 15px 40px;
+        width: 30%;
+        height: 50px;
+        border-radius: 5px;
+        border: 0.5px solid lightgrey;
+        background: url('../img/svg/calendar.svg');
+        background-size: 6%;
+        background-repeat: no-repeat;
+        background-position: 5% 50%;
+        box-sizing: border-box;
+      }
+    }
+  }
+}

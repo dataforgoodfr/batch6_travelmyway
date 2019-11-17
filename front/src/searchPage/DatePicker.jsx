@@ -1,28 +1,19 @@
-import React, { Component } from 'react'
-import { SingleDatePicker } from 'react-dates'
-import 'react-dates/initialize'
-import 'react-dates/lib/css/_datepicker.css'
+import React, { useState } from 'react'
+import DateAndTimePicker from 'react-datepicker'
 
-export default class DataPicker extends Component {
-  constructor() {
-    super()
-    this.state = {
-      date: null,
-      focused: false
-    }
-  }
+export default function DatePicker() {
+  const [startDate, setStartDate] = useState(new Date())
 
-  render() {
-    const { date, focused } = this.state
-
-    return (
-      <SingleDatePicker
-        date={date} // momentPropTypes.momentObj or null
-        onDateChange={date => this.setState({ date })} // PropTypes.func.isRequired
-        focused={focused} // PropTypes.bool
-        onFocusChange={({ focused }) => this.setState({ focused })} // PropTypes.func.isRequired
-        id="datePicker" // PropTypes.string.isRequired,
-      />
-    )
-  }
+  return (
+    <DateAndTimePicker
+      selected={startDate}
+      onChange={date => setStartDate(date)}
+      showTimeSelect
+      className="date"
+      timeFormat="HH:mm"
+      timeIntervals={30}
+      timeCaption="time"
+      dateFormat="MMMM d, yyyy h:mm aa"
+    />
+  )
 }
