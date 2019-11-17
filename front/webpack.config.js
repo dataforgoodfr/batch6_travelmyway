@@ -1,55 +1,70 @@
 const HtmlWebPackPlugin = require('html-webpack-plugin')
+const dotenv = require('dotenv')
+const webpack = require('webpack')
 
-module.exports = {
-  devServer: {
-    contentBase: './dist'
-  },
-  module: {
-    rules: [
-      {
-        test: /\.(js|jsx)$/,
-        exclude: /node_modules/,
-        use: {
-          loader: 'babel-loader'
-        }
-      },
-      {
-        test: /\.svg$/,
-        loader: 'url-loader'
-      },
-      {
-        test: /\.html$/,
-        use: [
-          {
-            loader: 'html-loader'
+module.exports = () => {
+  // call dotenv and it will return an Object with a parsed key
+  const env = dotenv.config().parsed
+
+  // reduce it to a nice object, the same as before
+  const envKeys = Object.keys(env).reduce((prev, next) => {
+    prev[`process.env.${next}`] = JSON.stringify(env[next])
+    return prev
+  }, {})
+
+  return {
+    devServer: {
+      contentBase: './dist'
+    },
+    module: {
+      rules: [
+        {
+          test: /\.(js|jsx)$/,
+          exclude: /node_modules/,
+          use: {
+            loader: 'babel-loader'
           }
-        ]
-      },
-      {
-        test: /\.jpg$/,
-        use: [
-          {
-            loader: 'file-loader',
-            options: {
-              outputPath: 'assets',
-              publicPath: 'assets'
+        },
+        {
+          test: /\.svg$/,
+          loader: 'url-loader'
+        },
+        {
+          test: /\.html$/,
+          use: [
+            {
+              loader: 'html-loader'
             }
-          }
-        ]
-      },
-      {
-        test: /\.(s[ac]ss|css)$/i,
-        use: ['style-loader', 'css-loader', 'sass-loader']
-      }
+          ]
+        },
+        {
+          test: /\.jpg$/,
+          use: [
+            {
+              loader: 'file-loader',
+              options: {
+                outputPath: 'assets',
+                publicPath: 'assets'
+              }
+            }
+          ]
+        },
+        {
+          test: /\.(s[ac]ss|css)$/i,
+          use: ['style-loader', 'css-loader', 'sass-loader']
+        }
+      ]
+    },
+    resolve: {
+      extensions: ['.js', '.jsx']
+    },
+    plugins: [
+      new webpack.DefinePlugin(envKeys),
+      new HtmlWebPackPlugin({
+        inject: false,
+        template: './src/index.ejs',
+        googleApiUrl: `https://maps.googleapis.com/maps/api/js?key=${process.env.GOOGLE_API_KEY}&libraries=places`
+      })
     ]
-  },
-  resolve: {
-    extensions: ['.js', '.jsx']
-  },
-  plugins: [
-    new HtmlWebPackPlugin({
-      template: './src/index.html',
-      filename: './index.html'
-    })
-  ]
+  }
 }
