@@ -1,6 +1,7 @@
 import React, { Component, fragment } from 'react'
 import PlacesAutocomplete, { geocodeByAddress, getLatLng } from 'react-places-autocomplete'
 
+// Need GOOGLE_API_KEY in .env to work
 class AutocompleteAddress extends Component {
   constructor() {
     super()
