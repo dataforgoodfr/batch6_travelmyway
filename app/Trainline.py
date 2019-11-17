@@ -202,6 +202,7 @@ def trainline_journeys(df_response, _id=0):
                                 )
         lst_sections.append(step)
         i = i + 1
+        # Go through all steps of the journey
         for index, leg in itinerary.iterrows():
             local_distance_m = distance(leg.geoloc_depart_seg, leg.geoloc_arrival_seg).m
             local_emissions = calculate_co2_emissions(constants.TYPE_TRAIN, '', '', '', '') * \
@@ -244,9 +245,16 @@ def trainline_journeys(df_response, _id=0):
                 lst_sections.append(step)
                 i = i + 1
 
-        journey_sky = tmw.journey(_id,
+        journey_train = tmw.journey(_id,
                                   steps=lst_sections)
-        lst_journeys.append(journey_sky)
+        # Add category
+        category_journey = list()
+        for step in journey_train.steps:
+            if step.type not in [constants.TYPE_TRANSFER, constants.TYPE_WAIT]:
+                category_journey.append(step.type)
+
+        journey_train.category = list(set(category_journey))
+        lst_journeys.append(journey_train)
 
         # for journey in lst_journeys:
         #    journey.update()

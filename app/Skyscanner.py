@@ -134,6 +134,13 @@ def skyscanner_journeys(df_response, _id=0):
                 i = i+1
 
         journey_sky = tmw.journey(_id, steps=lst_sections)
+        # Add category
+        category_journey = list()
+        for step in journey_sky.steps:
+            if step.type not in [constants.TYPE_TRANSFER, constants.TYPE_WAIT]:
+                category_journey.append(step.type)
+
+        journey_sky.category = list(set(category_journey))
         lst_journeys.append(journey_sky)
 
         for journey in lst_journeys:

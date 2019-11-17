@@ -249,6 +249,13 @@ def ouibus_journeys(df_response, _id=0):
                 i = i + 1
 
         journey_ouibus = tmw.journey(_id, steps=lst_sections)
+        # Add category
+        category_journey = list()
+        for step in journey_ouibus.steps:
+            if step.type not in [constants.TYPE_TRANSFER, constants.TYPE_WAIT]:
+                category_journey.append(step.type)
+
+        journey_ouibus.category = list(set(category_journey))
         lst_journeys.append(journey_ouibus)
 
         # for journey in lst_journeys:
