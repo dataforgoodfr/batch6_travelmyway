@@ -9,7 +9,7 @@ class journey:
     def __init__(self, _id, steps=[]):
         self.id = _id
         self.category = '' # car/train/plane
-        self.label = ''
+        self.label = []
         self.api_list = []
         self.score = 0
         self.total_distance = 0
@@ -28,6 +28,7 @@ class journey:
     def to_json(self):
         json = {'id': self.id,
                 'label': self.label,
+                'category': self.category,
                 'score': self.score,
                 'total_distance': self.total_distance,
                 'total_duration': self.total_duration,

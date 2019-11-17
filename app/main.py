@@ -3,12 +3,44 @@ import Skyscanner
 import OuiBus
 import Navitia
 import ORS
+import constants
 import TMW as tmw
 
 
 """
 Build a multi-modal journey
 """
+
+
+def filter_and_label_relevant_journey(journey_list):
+    filtered_journeys = list()
+    nb_journey_per_label = min(len(journey_list), 2)
+    # Label the complete journeys
+    journey_list.sort(key=lambda x: x.total_price_EUR, reverse=False)
+    journey_list[0].label = constants.LABEL_CHEAPEST_JOURNEY
+    filtered_journeys = filtered_journeys + journey_list[0:nb_journey_per_label]
+    journey_list.sort(key=lambda x: x.total_duration, reverse=False)
+    journey_list[0].label = constants.LABEL_FASTEST_JOURNEY
+    filtered_journeys = filtered_journeys + journey_list[0:nb_journey_per_label]
+    journey_list.sort(key=lambda x: x.total_gCO2, reverse=False)
+    journey_list[0].label = constants.LABEL_CLEANEST_JOURNEY
+    filtered_journeys = filtered_journeys + journey_list[0:nb_journey_per_label]
+
+    # Making sure we hand out at least one journey for each type (if possible)
+    type_checks = {constants.CATEGORY_COACH_JOURNEY: False, constants.CATEGORY_TRAIN_JOURNEY: False,
+                   constants.CATEGORY_PLANE_JOURNEY: False}
+    for journey in journey_list:
+        if (constants.CATEGORY_COACH_JOURNEY in journey.category) & (not type_checks[constants.CATEGORY_COACH_JOURNEY]):
+            filtered_journeys.append(journey)
+            type_checks[constants.CATEGORY_COACH_JOURNEY] = True
+        if (constants.CATEGORY_TRAIN_JOURNEY in journey.category) & (not type_checks[constants.CATEGORY_TRAIN_JOURNEY]):
+            filtered_journeys.append(journey)
+            type_checks[constants.CATEGORY_TRAIN_JOURNEY] = True
+        if (constants.CATEGORY_PLANE_JOURNEY in journey.category) & (not type_checks[constants.CATEGORY_PLANE_JOURNEY]):
+            filtered_journeys.append(journey)
+            type_checks[constants.CATEGORY_PLANE_JOURNEY] = True
+    # Delete double entries
+    return list(set(filtered_journeys))
 
 
 def compute_complete_journey(departure_date = '2019-11-25T09:00:00+0200', geoloc_dep=[48.85,2.35], geoloc_arrival=[43.60,1.44]):
@@ -22,7 +54,7 @@ def compute_complete_journey(departure_date = '2019-11-25T09:00:00+0200', geoloc
     # ors_step = ORS.ORS_query_directions(query_start_finish)
 
     all_journeys = trainline_journeys + skyscanner_journeys + ouibus_journeys
-    # Then we call Navitia to get
+    # Then we call Navitia to get the beginning and the end of the journey
     for interurban_journey in all_journeys:
         start_to_station_query = tmw.query(0, geoloc_dep, interurban_journey.steps[0].departure_point, departure_date)
         start_to_station_steps = Navitia.navitia_query_directions(start_to_station_query)
@@ -36,7 +68,9 @@ def compute_complete_journey(departure_date = '2019-11-25T09:00:00+0200', geoloc
             interurban_journey.reset()
 
     # all_journeys = all_journeys + ors_step
-    return all_journeys
+
+    # Filter most relevant Journeys
+    return filter_and_label_relevant_journey(all_journeys)
 
 
 def main(departure_date='2019-11-25', geoloc_dep=[48.85, 2.35], geoloc_arrival=[43.59053, 1.42299]):
