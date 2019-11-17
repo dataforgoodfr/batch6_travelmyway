@@ -14,6 +14,10 @@ module.exports = {
         }
       },
       {
+        test: /\.svg$/,
+        loader: 'url-loader'
+      },
+      {
         test: /\.html$/,
         use: [
           {
@@ -36,10 +40,6 @@ module.exports = {
       {
         test: /\.(s[ac]ss|css)$/i,
         use: ['style-loader', 'css-loader', 'sass-loader']
-      },
-      {
-        test: /\.svg$/,
-        loader: 'svg-inline-loader'
       }
     ]
   },

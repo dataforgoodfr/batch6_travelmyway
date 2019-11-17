@@ -33,10 +33,10 @@ function SearchContainer() {
 
         <div className="searchbar_bottom">
           <form action="" method="post" className="search-values">
-            <AutocompleteAddress />
-            <AutocompleteAddress />
+            {/* <AutocompleteAddress />
+            <AutocompleteAddress /> */}
             <DatePicker />
-            <input type="submit" name="valid" value="" />
+            <input className="submit" />
           </form>
         </div>
       </div>

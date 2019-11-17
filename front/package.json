@@ -7,6 +7,7 @@
     "global": "^4.4.0",
     "node-sass": "^4.13.0",
     "react": "^16.11.0",
+    "react-datepicker": "^2.10.0",
     "react-dates": "^21.3.2",
     "react-dom": "^16.11.0",
     "react-scripts": "^3.2.0",
@@ -35,6 +36,7 @@
     "react-places-autocomplete": "^7.2.1",
     "standard": "^14.3.1",
     "style-loader": "^1.0.0",
+    "url-loader": "^2.2.0",
     "webpack": "^4.41.2",
     "webpack-cli": "^3.3.10",
     "webpack-dev-server": "^3.9.0"
