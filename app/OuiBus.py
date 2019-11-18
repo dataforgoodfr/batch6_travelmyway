@@ -187,7 +187,7 @@ def ouibus_journeys(df_response, _id=0):
     # all itineraries :
     print(f'nb itinerary : {df_response.id.nunique()}')
     for itinerary_id in df_response.id.unique():
-        itinerary = df_response[df_response.id == itinerary_id]
+        itinerary = df_response[df_response.id == itinerary_id].reset_index(drop=True)
         # boolean to know whether and when there will be a transfer after the leg
         itinerary['next_departure'] = itinerary.departure_seg.shift(-1)
         itinerary['next_stop_name'] = itinerary.short_name_origin_seg.shift(1)
@@ -210,7 +210,9 @@ def ouibus_journeys(df_response, _id=0):
         i = i + 1
         for index, leg in itinerary.iterrows():
             local_distance_m = leg.distance_step
-            local_emissions = calculate_co2_emissions(constants.TYPE_COACH, constants.BIG_CITY, '', '', '')*\
+            local_emissions = calculate_co2_emissions(constants.TYPE_COACH, constants.DEFAULT_CITY,
+                                                      constants.DEFAULT_FUEL, constants.DEFAULT_NB_SEATS,
+                                                      constants.DEFAULT_NB_KM) *\
                               constants.DEFAULT_NB_PASSENGERS*local_distance_m
             step = tmw.journey_step(i,
                                     _type=constants.TYPE_COACH,

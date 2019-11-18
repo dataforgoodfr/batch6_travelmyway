@@ -2,7 +2,7 @@
 INITIATE CLASSES
 """
 from datetime import datetime as dt
-# import folium
+import folium
 
 
 class journey:
@@ -128,8 +128,8 @@ class journey_step:
         _map = init_map(center, zoom_start) if _map == None else _map
         
         folium.features.GeoJson(data=self.geojson,
-                        name=self.label,
-                        overlay=True).add_to(_map)
+                                name=self.label,
+                                overlay=True).add_to(_map)
         return _map
 
 class query:

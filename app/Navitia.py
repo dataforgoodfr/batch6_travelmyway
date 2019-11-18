@@ -8,6 +8,7 @@ from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
 import numpy as np
 import re
+from datetime import datetime
 
 
 def get_navitia_coverage(client):
@@ -20,7 +21,7 @@ def get_navitia_coverage(client):
     # turn coverage into DF
     df_cov = pd.DataFrame.from_dict(response_cov.json()['regions'])
 
-    print(f'{df_cov.shape[0]} regions found, here is an example:\n {df_cov.sample()}')
+    # print(f'{df_cov.shape[0]} regions found, here is an example:\n {df_cov.sample()}')
     # clean the geographical shape
     df_cov['polygon_clean'] = df_cov.apply(clean_polygon_for_coverage, axis=1)
     return df_cov
@@ -39,10 +40,11 @@ def clean_polygon_for_coverage(x):
 
     # split by '(' to see if there are several shape within polygon
     split_meta = x['shape'].split('(')
-    # we want ton only keep the biggest Polygon, first we compute sizes for all "polygon"
+    # we want to only keep the biggest Polygon, first we compute sizes for all "polygon"
     sizes_pol = np.array([])
     for i in split_meta:
         sizes_pol = np.append(sizes_pol, len(sizes_pol))
+        # sizes_pol = np.append(sizes_pol, len(i))
     # keep the biggest and act like there was only one from the beginning
     split_pol = split_meta[np.argmax(sizes_pol)]
 
@@ -60,6 +62,27 @@ def clean_polygon_for_coverage(x):
 
     # return the object Polygon
     return Polygon(np.column_stack((long, lat)))
+
+
+# WIP IGOR
+# import shapely.wkt
+# def clean_polygon_for_coverage(x):
+#     """
+#     The API call for coverage returns multipolygons (a list of one or several polygon) for each region
+#     but it is a string that we must convert to an actual Polygon object (in order to use function is point in polygon)
+#     Most regions have only one polygon, so we decide to only consider the biggest polygon for each regions
+#     """
+#     # split "polygon" as a string
+#     if x['shape'] == '':
+#         # Polygon is null
+#         return None
+#
+#     mp_loc = shapely.wkt.loads(x['shape'])
+#     p_loc = list(mp_loc)
+#     if len(p_loc) > 1:
+#         raise ValueError("ERROR: NAVITIA RETURNS MULTIPLE POLYGONS")
+#
+#     return p_loc[0]
 
 
 def find_navita_coverage_for_points(point_from, point_to, df_cov):
@@ -81,26 +104,21 @@ def find_navita_coverage_for_points(point_from, point_to, df_cov):
         raise ValueError("ERROR: NAVITIA query on 2 different regions")
 
 
-
 """
 NAVITIA FUNCTIONS
 """
 
 
 def start_navitia_client():
-    Navitia_api_key = tmw_api_keys.NAVITIA_API_KEY
-    navitia_client = Client(user=Navitia_api_key)
+    navitia_api_key = tmw_api_keys.NAVITIA_API_KEY
+    navitia_client = Client(user=navitia_api_key)
     return navitia_client
 
 
 def navitia_query_directions(query, _id=0):
-    '''
-    start (class point)
-    end (class point)
-    '''
     navitia_client = start_navitia_client()
-
-    try :
+    _NAVITIA_COV = get_navitia_coverage(navitia_client)
+    try:
         navitia_region = find_navita_coverage_for_points(query.start_point, query.end_point, _NAVITIA_COV)
     except:
         # coverage issue
@@ -125,25 +143,28 @@ def navitia_query_directions(query, _id=0):
         return None
 
 
-def navitia_coverage_global():
-    navitia_client = start_navitia_client()
-    cov = navitia_client.raw('coverage', multipage=False, page_limit=10, verbose=True)
-    coverage = cov.json()
-    for i, region in enumerate(coverage['regions']):
-        coverage['regions'][i]['shape'] = navitia_geostr_to_polygon(region['shape'])
-    return coverage
+# FONCTION NON UTILISéE, A SUPPRIMER?
+# def navitia_coverage_global():
+#     navitia_client = start_navitia_client()
+#     cov = navitia_client.raw('coverage', multipage=False, page_limit=10, verbose=True)
+#     coverage = cov.json()
+#     for i, region in enumerate(coverage['regions']):
+#         coverage['regions'][i]['shape'] = navitia_geostr_to_polygon(region['shape'])
+#     return coverage
 
 
-def navitia_coverage_plot(coverage):
-    _map = init_map(center=(48.864716, 2.349014), zoom_start=4)
-    for zone in coverage['regions']:
-        folium.vector_layers.PolyLine(locations=zone['shape'],  # start converage
-                                      tooltip=zone['name'],
-                                      smooth_factor=1,
-                                      ).add_to(_map)
-    return _map
+# FONCTION NON UTILISéE, A SUPPRIMER?
+# def navitia_coverage_plot(coverage):
+#     _map = init_map(center=(48.864716, 2.349014), zoom_start=4)
+#     for zone in coverage['regions']:
+#         folium.vector_layers.PolyLine(locations=zone['shape'],  # start converage
+#                                       tooltip=zone['name'],
+#                                       smooth_factor=1,
+#                                       ).add_to(_map)
+#     return _map
 
 
+#UTILISER DANS LA CLASSE POINT DE TMW, MAIS CETTE CLASSE EST UTILISéE NUL PART, A SUPPRIMER?
 def navitia_coverage_gpspoint(lon, lat):  #
     navitia_client = start_navitia_client()
     cov = navitia_client.raw('coverage/{};{}'.format(lon, lat), multipage=False, page_limit=10, verbose=True)
@@ -158,17 +179,19 @@ def navitia_coverage_gpspoint(lon, lat):  #
 
 
 def navitia_geostr_to_polygon(string):
-    regex = "([-]?\d+\.\d+) ([-]?\d+\.\d+)"
+    regex = r"([-]?\d+\.\d+) ([-]?\d+\.\d+)"
     r = re.findall(regex, string)
     r = [(float(coord[1]), float(coord[0])) for coord in r]  # [ (lat, lon) , (), ()]
     return r
 
 
-def point_in_polygon(point, polygon):
-    import shapely
-    from shapely.geometry import Polygon
-    poly = Polygon(((p[0],p[1])for p in polygon))
-    return True
+# FONCTION NON UTILISéE, A SUPPRIMER?
+# def point_in_polygon(point, polygon):
+#     import shapely
+#     from shapely.geometry import Polygon
+#     poly = Polygon(((p[0],p[1])for p in polygon))
+#     return True
+
 
 """
 https://doc.navitia.io/#journeys
@@ -200,7 +223,6 @@ def navitia_journeys(json, _id=0):
     return lst_journeys
 
 
-
 def navitia_journeys_sections_type(json, _id=0):
     switcher_journeys_sections_type = {
         'public_transport': navitia_journeys_sections_type_public_transport,
@@ -222,14 +244,20 @@ def navitia_journeys_sections_type_public_transport(json, _id=0):
         display_information['direction'],
     )
     step = tmw.journey_step(_id,
-                        _type=display_information['network'].lower(),
-                        label=label,
-                        distance_m=None,
-                        duration_s=json['duration'],
-                        price_EUR=[0],
-                        gCO2=json['co2_emission']['value'],
-                        geojson=json['geojson'],
-                        )
+                            _type=display_information['network'].lower(),
+                            label=label,
+                            distance_m=json['geojson']['properties'][0]['length'],
+                            duration_s=json['duration'],
+                            price_EUR=[0],
+                            gCO2=json['co2_emission']['value'],
+                            departure_point=json['from']['name'],
+                            arrival_point=json['to']['name'],
+                            departure_stop_name=json['from']['name'],
+                            arrival_stop_name=json['to']['name'],
+                            departure_date=datetime.strptime(json['departure_date_time'], '%Y%m%dT%H%M%S'),
+                            arrival_date=datetime.strptime(json['arrival_date_time'], '%Y%m%dT%H%M%S'),
+                            geojson=json['geojson'],
+                            )
     return step
 
 
@@ -246,14 +274,20 @@ def navitia_journeys_sections_type_street_network(json, _id=0):
         json['to']['name'],
     )
     step = tmw.journey_step(_id,
-                        _type=mode_to_type[mode],
-                        label=label,
-                        distance_m=None,
-                        duration_s=json['duration'],
-                        price_EUR=[0],
-                        gCO2=json['co2_emission']['value'],
-                        geojson=json['geojson'],
-                        )
+                            _type=mode_to_type[mode],
+                            label=label,
+                            distance_m=json['geojson']['properties'][0]['length'],
+                            duration_s=json['duration'],
+                            price_EUR=[0],
+                            gCO2=json['co2_emission']['value'],
+                            departure_point=json['from']['name'],
+                            arrival_point=json['to']['name'],
+                            departure_stop_name=json['from']['name'],
+                            arrival_stop_name=json['to']['name'],
+                            departure_date=datetime.strptime(json['departure_date_time'], '%Y%m%dT%H%M%S'),
+                            arrival_date=datetime.strptime(json['arrival_date_time'], '%Y%m%dT%H%M%S'),
+                            geojson=json['geojson'],
+                            )
     return step
 
 
@@ -266,39 +300,55 @@ def navitia_journeys_sections_type_transfer(json, _id=0):
     }
     label = '{} FROM {} TO {}'.format(mode_to_type[mode], json['from']['name'], json['to']['name'])
     step = tmw.journey_step(_id,
-                        _type=mode_to_type[mode],
-                        label=label,
-                        distance_m=None,
-                        duration_s=json['duration'],
-                        price_EUR=[0],
-                        gCO2=json['co2_emission']['value'],
-                        geojson=json['geojson'],
-                        )
+                            _type=mode_to_type[mode],
+                            label=label,
+                            distance_m=json['geojson']['properties'][0]['length'],
+                            duration_s=json['duration'],
+                            price_EUR=[0],
+                            gCO2=json['co2_emission']['value'],
+                            departure_point=json['from']['name'],
+                            arrival_point=json['to']['name'],
+                            departure_stop_name=json['from']['name'],
+                            arrival_stop_name=json['to']['name'],
+                            departure_date=datetime.strptime(json['departure_date_time'], '%Y%m%dT%H%M%S'),
+                            arrival_date=datetime.strptime(json['arrival_date_time'], '%Y%m%dT%H%M%S'),
+                            geojson=json['geojson'],
+                            )
     return step
 
 
 def navitia_journeys_sections_type_waiting(json, _id=0):
     step = tmw.journey_step(_id,
-                        _type=constants.TYPE_WAIT,
-                        label='wait',
-                        distance_m=None,
-                        duration_s=json['duration'],
-                        price_EUR=[0],
-                        gCO2=json['co2_emission']['value'],
-                        geojson='',
-                        )
+                            _type=constants.TYPE_WAIT,
+                            label='wait',
+                            distance_m=json['geojson']['properties'][0]['length'],
+                            duration_s=json['duration'],
+                            price_EUR=[0],
+                            gCO2=json['co2_emission']['value'],
+                            departure_point=json['from']['name'],
+                            arrival_point=json['to']['name'],
+                            departure_stop_name=json['from']['name'],
+                            arrival_stop_name=json['to']['name'],
+                            departure_date=datetime.strptime(json['departure_date_time'], '%Y%m%dT%H%M%S'),
+                            arrival_date=datetime.strptime(json['arrival_date_time'], '%Y%m%dT%H%M%S'),
+                            geojson='',
+                            )
     return step
 
 
-def navitia_journeys_correct(journey, json):
-    try:
-        if type(j) == journey:
-            True
-    except:
-        print('ERROR function navitia_journeys_correct() - INPUT Not journey class')
-        return False
+# FONCTION NON UTILISéE, A SUPPRIMER?
+# def navitia_journeys_correct(journey, json):
+#     try:
+#         if type(j) == journey:
+#             True
+#     except:
+#         print('ERROR function navitia_journeys_correct() - INPUT Not journey class')
+#         return False
+#
+#     return journey
 
-    return journey
+# ATTENTION NOTION DE TIMEZONE A PRENDRE EN COMPTE NORMALEMENT, A DISCUTER
+# import pytz
+# TZ_LOC = pytz.timezone('Europe/Paris')
+# TZ_LOC.localize(...)
 
-
-_NAVITIA_COV = get_navitia_coverage(start_navitia_client())

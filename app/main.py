@@ -5,6 +5,7 @@ import Navitia
 import ORS
 import constants
 import TMW as tmw
+from time import perf_counter
 
 
 """
@@ -47,11 +48,16 @@ def compute_complete_journey(departure_date = '2019-11-25T09:00:00+0200', geoloc
     # Let's create the start to finish query
     query_start_finish = tmw.query(0, geoloc_dep, geoloc_arrival, departure_date)
     print(query_start_finish)
+    # Start the stopwatch / counter
+    t1_start = perf_counter()
     # First we look for intercities journeys
     trainline_journeys = Trainline.main(query_start_finish)
     skyscanner_journeys = Skyscanner.main(query_start_finish)
     ouibus_journeys = OuiBus.main(query_start_finish)
     # ors_step = ORS.ORS_query_directions(query_start_finish)
+    # Stop the stopwatch / counter
+    t1_stop = perf_counter()
+    print("Elapsed time during the whole program in seconds:", t1_stop-t1_start)
 
     all_journeys = trainline_journeys + skyscanner_journeys + ouibus_journeys
     # Then we call Navitia to get the beginning and the end of the journey
@@ -64,7 +70,7 @@ def compute_complete_journey(departure_date = '2019-11-25T09:00:00+0200', geoloc
             interurban_journey.add_steps(start_to_station_steps[0].steps, start_end=True)
             interurban_journey.add_steps(station_to_arrival_steps[0].steps, start_end=False)
             interurban_journey.update()
-        else :
+        else:
             interurban_journey.reset()
 
     # all_journeys = all_journeys + ors_step

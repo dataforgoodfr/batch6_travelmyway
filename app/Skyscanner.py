@@ -65,7 +65,7 @@ def skyscanner_journeys(df_response, _id=0):
     lst_journeys = list()
     # all itineraries :
     for itinerary_id in df_response.itinerary_id.unique():
-        itinerary = df_response[df_response.itinerary_id == itinerary_id]
+        itinerary = df_response[df_response.itinerary_id == itinerary_id].reset_index(drop=True)
         i = _id
         # boolean to know whether and when there will be a transfer after the leg
         itinerary['next_departure'] = itinerary.DepartureDateTime.shift(-1)
@@ -89,9 +89,10 @@ def skyscanner_journeys(df_response, _id=0):
         for index, leg in itinerary.sort_values(by='DepartureDateTime').iterrows():
             local_distance_m = leg.distance_step
             local_range_km = get_range_km(local_distance_m)
-            local_emissions = calculate_co2_emissions(constants.TYPE_PLANE, '', constants.DEFAULT_PLANE_FUEL,
-                                                      constants.DEFAULT_NB_SEATS, local_range_km) * \
-                                                    constants.DEFAULT_NB_PASSENGERS * local_distance_m
+            local_emissions = calculate_co2_emissions(constants.TYPE_PLANE, constants.DEFAULT_CITY,
+                                                      constants.DEFAULT_FUEL, constants.NB_SEATS_TEST,
+                                                      local_range_km) * \
+                              constants.DEFAULT_NB_PASSENGERS * local_distance_m
 
             step = tmw.journey_step(i,
                                     _type=constants.TYPE_PLANE,
@@ -360,11 +361,12 @@ def get_airports_from_geo_locs(geoloc_dep, geoloc_arrival):
 
 
 def get_range_km(local_distance_m):
-    thousands_km = int(local_distance_m/1e6)
-    if thousands_km == 0:
-        range_km = str(thousands_km) + '-' + str(thousands_km + 1) + '000'
+    thousands_km_min = int(local_distance_m/1e6)
+    if thousands_km_min == 0:
+        range_km = ('0', '1000')
     else:
-        range_km = str(thousands_km) + '000-' + str(thousands_km + 1) + '000'
+        thousands_km_max = thousands_km_min + 1
+        range_km = (str(thousands_km_min) + '000', str(thousands_km_max) + '000')
     return range_km
 
 

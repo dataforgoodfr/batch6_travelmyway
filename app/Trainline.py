@@ -181,7 +181,7 @@ def trainline_journeys(df_response, _id=0):
     # all itineraries :
     # print(f'nb itinerary : {df_response.id_global.nunique()}')
     for itinerary_id in df_response.id_global.unique():
-        itinerary = df_response[df_response.id_global == itinerary_id]
+        itinerary = df_response[df_response.id_global == itinerary_id].reset_index(drop=True)
         # boolean to know whether and when there will be a transfer after the leg
         itinerary['next_departure'] = itinerary.departure_date_seg.shift(-1)
         itinerary['next_stop_name'] = itinerary.name_depart_seg.shift(-1)
@@ -205,10 +205,13 @@ def trainline_journeys(df_response, _id=0):
         # Go through all steps of the journey
         for index, leg in itinerary.iterrows():
             local_distance_m = distance(leg.geoloc_depart_seg, leg.geoloc_arrival_seg).m
-            local_emissions = calculate_co2_emissions(constants.TYPE_TRAIN, '', '', '', '') * \
+            local_transportation_type = tranportation_mean_to_type[leg.transportation_mean]
+            local_emissions = calculate_co2_emissions(local_transportation_type, constants.DEFAULT_CITY,
+                                                      constants.DEFAULT_FUEL, constants.DEFAULT_NB_SEATS,
+                                                      constants.DEFAULT_NB_KM) * \
                               constants.DEFAULT_NB_PASSENGERS * local_distance_m
             step = tmw.journey_step(i,
-                                    _type=tranportation_mean_to_type[leg.transportation_mean],
+                                    _type=local_transportation_type,
                                     label='',
                                     distance_m=local_distance_m,
                                     duration_s=(leg.arrival_date_seg - leg.departure_date_seg).seconds,
