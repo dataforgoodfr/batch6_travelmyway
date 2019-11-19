@@ -12,7 +12,7 @@ function SearchContainer() {
       <div className="searchbar">
         <div className="searchbar_top">
           <div className="select-values">
-            <select name="number-travelers" id="trav-select">
+            <select name="number-travelers">
               <option value="">1 voyageur</option>
               <option value="2">2 voyageurs</option>
               <option value="3">3 voyageurs</option>
@@ -24,7 +24,7 @@ function SearchContainer() {
           </div>
 
           <div className="select-values">
-            <select name="type-travel" id="type-select">
+            <select name="type-travel">
               <option value="both">Aller-retour</option>
               <option value="go">Aller simple</option>
               <option value="back">Retour simple</option>
