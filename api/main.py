@@ -2,6 +2,7 @@ import flask
 from flask import request
 from flask import json
 
+
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
 
@@ -28,18 +29,210 @@ def generate_fake_steps():
 
 def generate_fake_journey():
     array_steps = generate_fake_steps()
-    json = {'id': 1,
-            'label': '',
-            'score': '',
-            'total_distance': '',
-            'total_duration': '',
-            'total_price_EUR': '',
-            'departure_point': '',
-            'arrival_point': '',
-            'departure_date': '',
-            'arrival_date': '',
-            'total_gCO2': '',
-            'journey': array_steps}
+    json = {
+          'id': 0,
+          'label': 'Cheapest Journey',
+          'category': [
+            'Coach'
+          ],
+          'score': 0,
+          'total_distance': 584927.5507267849,
+          'total_duration': 36751,
+          'total_price_EUR': 18.99,
+          'departure_point': [
+            0,
+            0
+          ],
+          'arrival_point': [
+            0,
+            0
+          ],
+          'departure_date': '2019-11-17 18:18:47.764185',
+          'arrival_date': '2019-11-17 18:18:47.764192',
+          'total_gCO2': 2435.5156621818364,
+          'journey_steps': [
+            {
+              'id': 0,
+              'type': 'Walking',
+              'label': 'Walking FROM 52 Boulevard Saint-Germain (Paris) TO Maubert - Mutualité (Paris)',
+              'distance_m': None,
+              'duration_s': 45,
+              'price_EUR': [
+                0
+              ],
+              'departure_point': [
+                0.0
+              ],
+              'arrival_point': [
+                0.0
+              ],
+              'departure_stop_name': '',
+              'arrival_stop_name': '',
+              'departure_date': '2019-11-17 18:18:14.866097',
+              'arrival_date': '2019-11-17 18:18:14.866102',
+              'trip_code': '',
+              'gCO2': 0.0
+            },
+            {
+              'id': 1,
+              'type': 'ratp',
+              'label': 'Bus 63 / Gare de Lyon - Porte de la Muette / direction: Gare de Lyon - Maison de la RATP (Paris)',
+              'distance_m': None,
+              'duration_s': 600,
+              'price_EUR': [
+                0
+              ],
+              'departure_point': [
+                0.0
+              ],
+              'arrival_point': [
+                0.0
+              ],
+              'departure_stop_name': '',
+              'arrival_stop_name': '',
+              'departure_date': '2019-11-17 18:18:14.866097',
+              'arrival_date': '2019-11-17 18:18:14.866102',
+              'trip_code': '',
+              'gCO2': 263.291
+            },
+            {
+              'id': 2,
+              'type': 'Walking',
+              'label': 'Walking FROM Gare de Lyon - Maison de la RATP (Paris) TO 180 Quai de Bercy (Paris)',
+              'distance_m': None,
+              'duration_s': 1073,
+              'price_EUR': [
+                0
+              ],
+              'departure_point': [
+                0.0
+              ],
+              'arrival_point': [
+                0.0
+              ],
+              'departure_stop_name': '',
+              'arrival_stop_name': '',
+              'departure_date': '2019-11-17 18:18:14.866097',
+              'arrival_date': '2019-11-17 18:18:14.866102',
+              'trip_code': '',
+              'gCO2': 0.0
+            },
+            {
+              'id': 3,
+              'type': 'Waiting',
+              'label': '',
+              'distance_m': 0,
+              'duration_s': 900,
+              'price_EUR': [
+                0
+              ],
+              'departure_point': [
+                48.835318,
+                2.380519
+              ],
+              'arrival_point': [
+                48.835318,
+                2.380519
+              ],
+              'departure_stop_name': '',
+              'arrival_stop_name': '',
+              'departure_date': '2019-11-17 18:18:14.866097',
+              'arrival_date': '2019-11-17 18:18:14.866102',
+              'trip_code': '',
+              'gCO2': 0
+            },
+            {
+              'id': 4,
+              'type': 'Coach',
+              'label': '',
+              'distance_m': 584927.5507267849,
+              'duration_s': 32700,
+              'price_EUR': [
+                18.99
+              ],
+              'departure_point': [
+                48.835318,
+                2.380519
+              ],
+              'arrival_point': [
+                43.612522,
+                1.452612
+              ],
+              'departure_stop_name': 'Paris (Bercy Seine)',
+              'arrival_stop_name': 'Toulouse',
+              'departure_date': '2019-11-25 03:25:00+01:00',
+              'arrival_date': '2019-11-25 12:30:00+01:00',
+              'trip_code': 'Car ',
+              'gCO2': 2158.382662181836
+            },
+            {
+              'id': 5,
+              'type': 'Walking',
+              'label': 'Walking FROM 68 Boulevard Pierre Semard (Toulouse) TO Marengo-SNCF (Toulouse)',
+              'distance_m': None,
+              'duration_s': 397,
+              'price_EUR': [
+                0
+              ],
+              'departure_point': [
+                0.0
+              ],
+              'arrival_point': [
+                0.0
+              ],
+              'departure_stop_name': '',
+              'arrival_stop_name': '',
+              'departure_date': '2019-11-17 18:18:14.866097',
+              'arrival_date': '2019-11-17 18:18:14.866102',
+              'trip_code': '',
+              'gCO2': 0.0
+            },
+            {
+              'id': 6,
+              'type': 'tisséo',
+              'label': 'Métro A / Basso Cambo / Balma - Gramont / direction: Basso Cambo (Toulouse)',
+              'distance_m': None,
+              'duration_s': 540,
+              'price_EUR': [
+                0
+              ],
+              'departure_point': [
+                0.0
+              ],
+              'arrival_point': [
+                0.0
+              ],
+              'departure_stop_name': '',
+              'arrival_stop_name': '',
+              'departure_date': '2019-11-17 18:18:14.866097',
+              'arrival_date': '2019-11-17 18:18:14.866102',
+              'trip_code': '',
+              'gCO2': 13.842
+            },
+            {
+              'id': 7,
+              'type': 'Walking',
+              'label': 'Walking FROM Fontaine Lestang (Toulouse) TO 1 Rue Yvan Lacassagne (Toulouse)',
+              'distance_m': None,
+              'duration_s': 496,
+              'price_EUR': [
+                0
+              ],
+              'departure_point': [
+                0.0
+              ],
+              'arrival_point': [
+                0.0
+              ],
+              'departure_stop_name': '',
+              'arrival_stop_name': '',
+              'departure_date': '2019-11-17 18:18:14.866097',
+              'arrival_date': '2019-11-17 18:18:14.866102',
+              'trip_code': '',
+              'gCO2': 0.0
+            }
+          ]
+        }
     return json
 
 
