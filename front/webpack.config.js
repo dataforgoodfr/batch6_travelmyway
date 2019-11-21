@@ -1,6 +1,7 @@
 const HtmlWebPackPlugin = require('html-webpack-plugin')
 const dotenv = require('dotenv')
 const webpack = require('webpack')
+const path = require('path')
 
 module.exports = () => {
   // call dotenv and it will return an Object with a parsed key
@@ -16,6 +17,12 @@ module.exports = () => {
     devServer: {
       contentBase: './dist'
     },
+    output: {
+      path: path.resolve(__dirname, 'dist'),
+      filename: 'main.js',
+      publicPath: '/'
+    },
+    watch: true,
     module: {
       rules: [
         {
