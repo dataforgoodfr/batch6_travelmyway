@@ -1,13 +1,11 @@
 import React, { useState } from 'react'
 import DateAndTimePicker from 'react-datepicker'
 
-export default function DatePicker() {
-  const [startDate, setStartDate] = useState(new Date())
-
+const DatePicker = ({ selectDate, date }) => {
   return (
     <DateAndTimePicker
-      selected={startDate}
-      onChange={date => setStartDate(date)}
+      selected={date}
+      onChange={date => selectDate(date)}
       showTimeSelect
       className="date"
       timeFormat="HH:mm"
@@ -17,3 +15,5 @@ export default function DatePicker() {
     />
   )
 }
+
+export default DatePicker

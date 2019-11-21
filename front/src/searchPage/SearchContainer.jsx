@@ -1,9 +1,26 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import AutocompleteAddress from './AutocompleteAddress'
 import DatePicker from './DatePicker'
 
-function SearchContainer() {
+const SearchContainer = () => {
+  const [departureCoordinates, setDepartureCoordinates] = useState({})
+  const [arrivalCoordinates, setArrivalCoordinates] = useState({})
+  const [startDate, setStartDate] = useState(new Date())
+
+  const changeDepartureAddress = suggestion => setDepartureCoordinates(suggestion.latlng)
+
+  const changeArrivalAddress = suggestion => setArrivalCoordinates(suggestion.latlng)
+
+  const changeStartDate = date => {
+    setStartDate(date)
+  }
+
+  const submitForm = () => {
+    const url = `http://localhost:5000/journey?from=&to=berlin&start=19/10/2020`
+    window.fetch(url, { method: 'post' })
+  }
+
   return (
     <main className="main-home">
       <div className="main-home_title">
@@ -34,10 +51,10 @@ function SearchContainer() {
 
         <div className="searchbar_bottom">
           <form action="" method="post" className="search-values">
-            <AutocompleteAddress />
-            <AutocompleteAddress />
-            <DatePicker />
-            <Link to="/results" className="submit" />
+            <AutocompleteAddress placeholder="Départ" changeAddress={changeDepartureAddress} />
+            <AutocompleteAddress placeholder="Arrivée" changeAddress={changeArrivalAddress} />
+            <DatePicker selectDate={changeStartDate} date={startDate} />
+            <Link to="/results" onClick={submitForm} className="submit" />
           </form>
         </div>
       </div>

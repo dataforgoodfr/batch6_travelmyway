@@ -1,62 +1,34 @@
 import React, { Component, fragment } from 'react'
-import PlacesAutocomplete, { geocodeByAddress, getLatLng } from 'react-places-autocomplete'
+import AlgoliaPlaces from 'algolia-places-react'
 
-// Need GOOGLE_API_KEY in .env to work
-class AutocompleteAddress extends Component {
-  constructor() {
-    super()
-    this.state = {
-      address: '',
-      query: ''
-    }
-  }
-
-  handleChange = address => {
-    this.setState({ address })
-  }
-
-  handleSelect = address => {
-    geocodeByAddress(address)
-      .then(results => getLatLng(results[0]))
-      .then(latLng => console.log('Success', latLng))
-      .catch(error => console.error('Error', error))
-  }
-
-  render() {
-    return (
-      <PlacesAutocomplete
-        value={this.state.address}
-        onChange={this.handleChange}
-        onSelect={this.handleSelect}
-      >
-        {({ getInputProps, suggestions, getSuggestionItemProps, loading }) => (
-          <div>
-            <input
-              className="autocomplete-input"
-              {...getInputProps({
-                placeholder: 'Search Places ...'
-              })}
-            />
-            <div className="autocomplete-dropdown">
-              {loading && <div className="suggestion-item">Loading...</div>}
-              {suggestions.map(suggestion => {
-                const className = suggestion.active ? 'suggestion-item--active' : 'suggestion-item'
-                return (
-                  <div
-                    {...getSuggestionItemProps(suggestion, {
-                      className
-                    })}
-                  >
-                    <span>{suggestion.description}</span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-      </PlacesAutocomplete>
-    )
-  }
+const AutocompleteAddress = ({ changeAddress, placeholder }) => {
+  return (
+    <AlgoliaPlaces
+      placeholder={placeholder}
+      options={{
+        appId: 'plIMLBK6SAIV',
+        apiKey: '3eafdf4bffe092bb1a6141c4eda52f9f',
+        language: 'fr'
+        // Other options from https://community.algolia.com/places/documentation.html#options
+      }}
+      onChange={({ query, rawAnswer, suggestion, suggestionIndex }) => changeAddress(suggestion)}
+      onSuggestions={({ rawAnswer, query, suggestions }) =>
+        console.log(
+          'Fired when dropdown receives suggestions. You will receive the array of suggestions that are displayed.'
+        )
+      }
+      onCursorChanged={({ rawAnswer, query, suggestion, suggestonIndex }) =>
+        console.log('Fired when arrows keys are used to navigate suggestions.')
+      }
+      onClear={() => console.log('Fired when the input is cleared.')}
+      onLimit={({ message }) => console.log('Fired when you reached your current rate limit.')}
+      onError={({ message }) =>
+        console.log(
+          'Fired when we could not make the request to Algolia Places servers for any reason but reaching your rate limit.'
+        )
+      }
+    />
+  )
 }
 
 export default AutocompleteAddress
