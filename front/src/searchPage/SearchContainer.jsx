@@ -1,6 +1,7 @@
 import React from 'react'
-import DatePicker from './DatePicker'
+import { Link } from 'react-router-dom'
 import AutocompleteAddress from './AutocompleteAddress'
+import DatePicker from './DatePicker'
 
 function SearchContainer() {
   return (
@@ -11,7 +12,7 @@ function SearchContainer() {
       <div className="searchbar">
         <div className="searchbar_top">
           <div className="select-values">
-            <select name="number-travelers" id="trav-select">
+            <select name="number-travelers">
               <option value="">1 voyageur</option>
               <option value="2">2 voyageurs</option>
               <option value="3">3 voyageurs</option>
@@ -23,7 +24,7 @@ function SearchContainer() {
           </div>
 
           <div className="select-values">
-            <select name="type-travel" id="type-select">
+            <select name="type-travel">
               <option value="both">Aller-retour</option>
               <option value="go">Aller simple</option>
               <option value="back">Retour simple</option>
@@ -36,7 +37,7 @@ function SearchContainer() {
             <AutocompleteAddress />
             <AutocompleteAddress />
             <DatePicker />
-            <input className="submit" />
+            <Link to="/results" className="submit" />
           </form>
         </div>
       </div>

@@ -40,7 +40,7 @@
         font-size: 14px;
       }
 
-      .autocomplete-address {
+      .autocomplete-input {
         min-width: 250px;
         position: relative;
         padding: 15px 15px 15px 40px;
@@ -51,6 +51,21 @@
         background-size: 6%;
         background-repeat: no-repeat;
         background-position: 5% 50%;
+      }
+
+      .autocomplete-dropdown {
+        position: absolute;
+      }
+
+      .suggestion-item {
+        background-color: white;
+        padding: 10px;
+      }
+
+      .suggestion-item--active {
+        background-color: #f9f9f9;
+        cursor: pointer;
+        padding: 10px;
       }
 
       .submit {

@@ -30,26 +30,21 @@ class AutocompleteAddress extends Component {
         onSelect={this.handleSelect}
       >
         {({ getInputProps, suggestions, getSuggestionItemProps, loading }) => (
-          <fragment>
+          <div>
             <input
-              className="autocomplete-address"
+              className="autocomplete-input"
               {...getInputProps({
                 placeholder: 'Search Places ...'
               })}
             />
-            <div className="autocomplete-dropdown-container">
-              {loading && <div>Loading...</div>}
+            <div className="autocomplete-dropdown">
+              {loading && <div className="suggestion-item">Loading...</div>}
               {suggestions.map(suggestion => {
                 const className = suggestion.active ? 'suggestion-item--active' : 'suggestion-item'
-                // inline style for demonstration purpose
-                const style = suggestion.active
-                  ? { backgroundColor: '#fafafa', cursor: 'pointer' }
-                  : { backgroundColor: '#ffffff', cursor: 'pointer' }
                 return (
                   <div
                     {...getSuggestionItemProps(suggestion, {
-                      className,
-                      style
+                      className
                     })}
                   >
                     <span>{suggestion.description}</span>
@@ -57,7 +52,7 @@ class AutocompleteAddress extends Component {
                 )
               })}
             </div>
-          </fragment>
+          </div>
         )}
       </PlacesAutocomplete>
     )
