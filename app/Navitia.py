@@ -5,10 +5,9 @@ import constants
 # import folium
 from navitia_client import Client
 from shapely.geometry import Point
-from shapely.geometry.polygon import Polygon
-import numpy as np
 import re
 from datetime import datetime
+import shapely.wkt
 
 
 def get_navitia_coverage(client):
@@ -20,69 +19,29 @@ def get_navitia_coverage(client):
     response_cov = client.raw('coverage', multipage=False, page_limit=10, verbose=True)
     # turn coverage into DF
     df_cov = pd.DataFrame.from_dict(response_cov.json()['regions'])
-
-    # print(f'{df_cov.shape[0]} regions found, here is an example:\n {df_cov.sample()}')
-    # clean the geographical shape
+    # extract the geographical shape into polygon
     df_cov['polygon_clean'] = df_cov.apply(clean_polygon_for_coverage, axis=1)
+    # Clean NaN polygons
+    df_cov = df_cov[~pd.isna(df_cov.polygon_clean)].reset_index(drop=True)
+    # Get the area of each polygon
+    df_cov['area_polygon_clean'] = df_cov.loc[:, 'polygon_clean'].apply(lambda x: x.area)
     return df_cov
 
 
 def clean_polygon_for_coverage(x):
-    """
-    The API call for coverage returns multipolygons (a list of one or several polygon) for each region
-    but it is a string that we must convert to an actual Polygon object (in order to use function is point in polygon)
-    Most regions have only one polygon, so we decide to only consider the biggest polygon for each regions
-    """
-    # split "polygon" as a string
+    # Test whether shape is not empty
     if x['shape'] == '':
         # Polygon is null
         return None
-
-    # split by '(' to see if there are several shape within polygon
-    split_meta = x['shape'].split('(')
-    # we want to only keep the biggest Polygon, first we compute sizes for all "polygon"
-    sizes_pol = np.array([])
-    for i in split_meta:
-        sizes_pol = np.append(sizes_pol, len(sizes_pol))
-        # sizes_pol = np.append(sizes_pol, len(i))
-    # keep the biggest and act like there was only one from the beginning
-    split_pol = split_meta[np.argmax(sizes_pol)]
-
-    # Let's split the polygon into a list of geoloc (lat, long)
-    split_pol = split_pol.split(',')
-    # clean the last point (the first and the last are the same cause the polygon has to be "closed")
-    split_pol[-1] = split_pol[0]
-    # recreate latitude and longitude list
-    lat = np.array([])
-    long = np.array([])
-    for point in split_pol:
-        split_point = point.split(' ')
-        lat = np.append(lat, split_point[0])
-        long = np.append(long, split_point[1])
-
-    # return the object Polygon
-    return Polygon(np.column_stack((long, lat)))
-
-
-# WIP IGOR
-# import shapely.wkt
-# def clean_polygon_for_coverage(x):
-#     """
-#     The API call for coverage returns multipolygons (a list of one or several polygon) for each region
-#     but it is a string that we must convert to an actual Polygon object (in order to use function is point in polygon)
-#     Most regions have only one polygon, so we decide to only consider the biggest polygon for each regions
-#     """
-#     # split "polygon" as a string
-#     if x['shape'] == '':
-#         # Polygon is null
-#         return None
-#
-#     mp_loc = shapely.wkt.loads(x['shape'])
-#     p_loc = list(mp_loc)
-#     if len(p_loc) > 1:
-#         raise ValueError("ERROR: NAVITIA RETURNS MULTIPLE POLYGONS")
-#
-#     return p_loc[0]
+    # Transform the string in multipolygon
+    mp_loc = shapely.wkt.loads(x['shape'])
+    # Then into a list of polygon
+    p_loc = list(mp_loc)
+    # Test whether there are several polygons
+    if len(p_loc) > 1:
+        raise ValueError("ERROR: NAVITIA RETURNS MULTIPLE POLYGONS")
+    # If not return the first (and only) one
+    return p_loc[0]
 
 
 def find_navita_coverage_for_points(point_from, point_to, df_cov):
@@ -91,17 +50,15 @@ def find_navita_coverage_for_points(point_from, point_to, df_cov):
     If any point is not in any region, or the 2 points are in different regions we have an error
     """
     # convert into geopoint
-    point_from = Point(point_from[0], point_from[1])
-    point_to = Point(point_to[0], point_to[1])
+    point_from = Point(point_from[1], point_from[0])
+    point_to = Point(point_to[1], point_to[0])
     # test if points are within polygon for each region
-    are_points_in_cov = df_cov[~pd.isna(df_cov.polygon_clean)].apply(
+    are_points_in_cov = df_cov.apply(
         lambda x: (x.polygon_clean.contains(point_from)) & (x.polygon_clean.contains(point_to)), axis=1)
-    # find the good region
-    id_cov = df_cov[~pd.isna(df_cov.polygon_clean)][are_points_in_cov].id
-    if not id_cov.empty:
-        return id_cov.values[0]
-    else:
-        raise ValueError("ERROR: NAVITIA query on 2 different regions")
+    # extract the id of the smallest region around the point
+    ix_id_cov = df_cov[are_points_in_cov].area_polygon_clean.idxmin()
+    id_cov = df_cov.loc[ix_id_cov, 'id']
+    return id_cov
 
 
 """
@@ -121,8 +78,7 @@ def navitia_query_directions(query, _id=0):
     try:
         navitia_region = find_navita_coverage_for_points(query.start_point, query.end_point, _NAVITIA_COV)
     except:
-        # coverage issue
-        return None
+        raise ValueError("ERROR: COVERAGE ISSUE")
     # if start.navitia['name'] != end.navitia['name']:  # region name (ex: idf-fr)
     #     print('ERROR: NAVITIA query on 2 different regions')
 
