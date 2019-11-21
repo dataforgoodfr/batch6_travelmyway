@@ -5,12 +5,20 @@ import DatePicker from './DatePicker'
 
 const SearchContainer = () => {
   const [departureCoordinates, setDepartureCoordinates] = useState({})
+  const [arrivalCoordinates, setArrivalCoordinates] = useState({})
+  const [startDate, setStartDate] = useState(new Date())
 
-  const changeDepartureAddress = suggestion => {
-    setDepartureCoordinates(suggestion.latlng)
+  const changeDepartureAddress = suggestion => setDepartureCoordinates(suggestion.latlng)
+
+  const changeArrivalAddress = suggestion => setArrivalCoordinates(suggestion.latlng)
+
+  const changeStartDate = date => {
+    setStartDate(date)
   }
-  const changeArrivalAddress = suggestion => {
-    setDepartureCoordinates(suggestion.latlng)
+
+  const submitForm = () => {
+    const url = `http://localhost:5000/journey?from=&to=berlin&start=19/10/2020`
+    window.fetch(url, { method: 'post' })
   }
 
   return (
@@ -45,8 +53,8 @@ const SearchContainer = () => {
           <form action="" method="post" className="search-values">
             <AutocompleteAddress placeholder="Départ" changeAddress={changeDepartureAddress} />
             <AutocompleteAddress placeholder="Arrivée" changeAddress={changeArrivalAddress} />
-            <DatePicker />
-            <Link to="/results" className="submit" />
+            <DatePicker selectDate={changeStartDate} date={startDate} />
+            <Link to="/results" onClick={submitForm} className="submit" />
           </form>
         </div>
       </div>
