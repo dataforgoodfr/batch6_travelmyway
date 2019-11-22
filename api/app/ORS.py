@@ -1,7 +1,7 @@
 import openrouteservice
 from openrouteservice import convert
-import constants
-import tmw_api_keys
+from app import constants
+from app import tmw_api_keys
 
 """
 OPEN ROUTE SERVICES FUNCTIONS

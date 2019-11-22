@@ -141,9 +141,9 @@ class query:
 
     def to_json(self):
         json = {'id':self.id,
-                 'start':self.start_point.to_json(),
-                 'end':self.end_point.to_json(),
-                 'datetime':self.datetime,
+                 'start':self.start_point,
+                 'end':self.end_point,
+                 'departure_date':self.departure_date,
                 }
         return json
 

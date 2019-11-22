@@ -1,15 +1,40 @@
 import os
 import pandas as pd
-import constants
+from app import constants
+from loguru import logger
+
+logger.info(f'before le truc')
+
+path = os.path.join(os.getcwd(), constants.ADEME_LOC_DB_PATH)#
+try:
+    logger.info(f'before pd.read_excel(path)')
+
+    _CARBON_DB = pd.read_excel(path)
+except:
+    try :
+        tmp = os.path.join(os.getcwd(), 'app/', constants.ADEME_LOC_DB_PATH)
+        logger.info(tmp)
+        _CARBON_DB = pd.read_csv(os.path.join(os.getcwd(), 'api/app/', constants.ADEME_LOC_DB_PATH),sep = ';')
+        logger.info(_CARBON_DB.head(1))
+    except:
+        tmp = os.path.join(os.getcwd(), 'app/', constants.ADEME_LOC_DB_PATH)
+        logger.info(tmp)
+        _CARBON_DB = pd.read_csv(os.path.join(os.getcwd(), 'app/', constants.ADEME_LOC_DB_PATH), sep=';')
+        logger.info(_CARBON_DB.head(1))
 
 def calculate_co2_emissions_old(type_transport, type_city, fuel, nb_seats, nb_km):
-    path = os.path.join(os.getcwd(), constants.ADEME_LOC_DB_PATH)
-    carbon_db = pd.read_excel(path)
-    # @Baptiste, pq on a besoin de ce try and except??
-    # try :
-    #     carbon_db = pd.read_excel(path)
-    # except:
-    #     carbon_db = pd.read_excel(os.path.join(os.getcwd(), 'app/', constants.ADEME_LOC_DB_PATH))
+
+    #path = os.path.join(os.getcwd(), constants.ADEME_LOC_DB_PATH)
+    #logger.info(f'apres path')
+    ## carbon_db = pd.read_excel(path)
+    ## @Baptiste, pq on a besoin de ce try and except??
+    #try :
+    #    logger.info(f'before pd.read_excel(path)')
+#
+    #    carbon_db = pd.read_excel(path)
+    #except:
+    #    logger.info(f'before pd.read_excel(os.path.join(os.getcwd())')
+    #    carbon_db = pd.read_excel(os.path.join(os.getcwd(), 'app/', constants.ADEME_LOC_DB_PATH))
     
     select_type_transport = (carbon_db.loc[:, constants.TYPE_OF_TRANSPORT] == type_transport)
     index_db = select_type_transport
@@ -29,9 +54,12 @@ def calculate_co2_emissions_old(type_transport, type_city, fuel, nb_seats, nb_km
 
 
 def calculate_co2_emissions(type_transport, type_city, fuel, nb_seats, nb_km):
-    path = os.path.join(os.getcwd(), constants.ADEME_LOC_DB_PATH)
-    carbon_db = pd.read_csv(path, delimiter=';')
-
+    logger.info(f'inside co2')
+    logger.info('djbfk')
+    logger.info(f'constants.ADEME_LOC_DB_PATH {constants.ADEME_LOC_DB_PATH}')
+    # path = os.path.join(os.getcwd(), constants.ADEME_LOC_DB_PATH)
+    # carbon_db = pd.read_csv(path, delimiter=';')
+    carbon_db = _CARBON_DB
     select_type_transport = (carbon_db.loc[:, constants.TYPE_OF_TRANSPORT] == type_transport)
     index_db = select_type_transport
     if type_city != constants.DEFAULT_CITY:
