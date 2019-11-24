@@ -58,7 +58,7 @@ def search_for_all_fares(date, origin_id, destination_id, passengers, include_bu
     # Define headers (according to github/trainline)
     headers = {
         'Accept': 'application/json',
-        'User-Agent': 'CaptainTrain/43(4302) Android/4.4.2(19)',
+        'User-Agent': 'CaptainTrain/1574360965(web) (Ember 3.5.1)',
         'Accept-Language': 'fr',
         'Content-Type': 'application/json; charset=UTF-8',
         'Host': 'www.trainline.eu',
@@ -81,12 +81,10 @@ def search_for_all_fares(date, origin_id, destination_id, passengers, include_bu
             }
     post_data = json.dumps(data)
 
-    tmp = dt.now()
     # logger.info('juste avant le post trainline')
     ret = session.post(url="https://www.trainline.eu/api/v5_1/search",
                        headers=headers,
                        data=post_data)
-
     # print(f'API call duration {dt.now() - tmp}')
     # logger.info('avant le format')
 
@@ -335,7 +333,6 @@ def get_stops_from_geo_locs(geoloc_dep, geoloc_arrival, max_distance_km=50):
 
 def main(query):
     stops = get_stops_from_geo_locs(query.start_point, query.end_point)
-    logger.info(f'stops ')
     # print(f'{len(stops.departure)} departure parent station found ')
     # print(f'{len(stops.arrival)} arrival parent station found ')
     detail_response = pd.DataFrame()
@@ -345,10 +342,8 @@ def main(query):
             detail_response = detail_response.append(search_for_all_fares(query.departure_date, int(departure_station_id),
                                                                           int(arrival_station_id), _PASSENGER,
                                                                           segment_details=True))
-    # logger.info('apres call API')
 
     all_journeys = trainline_journeys(detail_response)
-    # logger.info('apres conversion journey')
 
     # for i in all_journeys:
     #     print(i.to_json())
