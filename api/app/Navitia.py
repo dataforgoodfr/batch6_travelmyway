@@ -83,7 +83,8 @@ def navitia_query_directions(query, _id=0):
         navitia_region = find_navita_coverage_for_points(query.start_point, query.end_point, _NAVITIA_COV)
     except:
         logger.warning('on a pas trouve la region :(')
-        raise ValueError("ERROR: COVERAGE ISSUE")
+        return None
+        # raise ValueError("ERROR: COVERAGE ISSUE")
     # if start.navitia['name'] != end.navitia['name']:  # region name (ex: idf-fr)
     #     print('ERROR: NAVITIA query on 2 different regions')
 
