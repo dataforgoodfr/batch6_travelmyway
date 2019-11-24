@@ -269,6 +269,32 @@ def compute_journey():
         return "Server error", 500
 
 
+@app.route('/fake_journey', methods=['GET'])
+def compute_fake_journey():
+    start = request.args.get('from')
+    end = request.args.get('to')
+    date_time = request.args.get('start')
+    if start is None or end is None or date_time is None:
+        return "<h1>KO</h1><p>Missing mandatory parameters</p>", 500
+    logger.info(f'end {end}, start {start} date {date_time}')
+    try:
+        end = end.split(',')
+        end[0] = float(end[0])
+        end[1] = float(end[1])
+        start = start.split(',')
+        start[0] = float(start[0])
+        start[1] = float(start[1])
+        logger.info(f'start {start}')
+        logger.info(f'end {end}')
+    except:
+        return "<h1>KO</h1><p>geoloc format not recognized</p>"
+    try:
+        result = json.dumps(generate_fake_journey())
+        return result, 200
+    except Exception:
+        return "Server error", 500
+
+
 @app.errorhandler(404)
 def page_not_found(e):
     return "<h1>404</h1><p>The resource could not be found.</p>", 404
