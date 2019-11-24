@@ -28,7 +28,7 @@ def filter_and_label_relevant_journey(journey_list):
     logger.info(f'after labels we have {len(filtered_journeys)} journeys in the filter')
     # Making sure we hand out at least one journey for each type (if possible)
     type_checks = {constants.CATEGORY_COACH_JOURNEY: False, constants.CATEGORY_TRAIN_JOURNEY: False,
-                   constants.CATEGORY_PLANE_JOURNEY: False}
+                   constants.CATEGORY_PLANE_JOURNEY: False, constants.CATEGORY_CAR_JOURNEY: False}
     for journey in journey_list:
         if (constants.CATEGORY_COACH_JOURNEY in journey.category) & (not type_checks[constants.CATEGORY_COACH_JOURNEY]):
             filtered_journeys.append(journey)
@@ -39,6 +39,9 @@ def filter_and_label_relevant_journey(journey_list):
         if (constants.CATEGORY_PLANE_JOURNEY in journey.category) & (not type_checks[constants.CATEGORY_PLANE_JOURNEY]):
             filtered_journeys.append(journey)
             type_checks[constants.CATEGORY_PLANE_JOURNEY] = True
+        if (constants.CATEGORY_CAR_JOURNEY in journey.category) & (not type_checks[constants.CATEGORY_CAR_JOURNEY]):
+            filtered_journeys.append(journey)
+            type_checks[constants.CATEGORY_CAR_JOURNEY] = True
     logger.info(f'after type check we have {len(filtered_journeys)} journeys in the filter')
     # Delete double entries
     return list(set(filtered_journeys))
@@ -57,7 +60,7 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
     logger.info('sky good')
     ouibus_journeys = OuiBus.main(query_start_finish)
     logger.info('ouibus good')
-    # ors_step = ORS.ORS_query_directions(query_start_finish)
+    ors_journey = ORS.ORS_query_directions(query_start_finish)
     # Stop the stopwatch / counter
     t1_stop = perf_counter()
     logger.info("Elapsed time during the whole program in seconds:", t1_stop-t1_start)
@@ -84,7 +87,7 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
             all_journeys.remove(interurban_journey)
             #interurban_journey.reset()
 
-    # all_journeys = all_journeys + ors_step
+    all_journeys.append(ors_journey)
 
     # Filter most relevant Journeys
     filtered_journeys = filter_and_label_relevant_journey(all_journeys)
