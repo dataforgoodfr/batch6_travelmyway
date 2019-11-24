@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import DateAndTimePicker from 'react-datepicker'
 
 const DatePicker = ({ selectDate, date }) => {
@@ -12,6 +12,8 @@ const DatePicker = ({ selectDate, date }) => {
       timeIntervals={30}
       timeCaption="time"
       dateFormat="MMMM d, yyyy h:mm aa"
+      minDate={Date.now()}
+      monthsShown={2}
     />
   )
 }

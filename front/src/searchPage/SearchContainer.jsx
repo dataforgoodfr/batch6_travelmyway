@@ -8,17 +8,29 @@ const SearchContainer = () => {
   const [arrivalCoordinates, setArrivalCoordinates] = useState({})
   const [startDate, setStartDate] = useState(new Date())
 
-  const changeDepartureAddress = suggestion => setDepartureCoordinates(suggestion.latlng)
+  const changeDepartureAddress = suggestion => {
+    setDepartureCoordinates(suggestion ? suggestion.latlng : {})
+  }
 
-  const changeArrivalAddress = suggestion => setArrivalCoordinates(suggestion.latlng)
+  const changeArrivalAddress = suggestion => {
+    setArrivalCoordinates(suggestion ? suggestion.latlng : {})
+  }
 
   const changeStartDate = date => {
     setStartDate(date)
   }
 
   const submitForm = () => {
-    const url = `http://localhost:5000/journey?from=&to=berlin&start=19/10/2020`
-    window.fetch(url, { method: 'post' })
+    const formatedDate = startDate.toLocaleDateString()
+    // const url = `http://localhost:5000/journey?fromlat=${departureCoordinates.lat}&fromlng=${departureCoordinates.lng}&tolat=${arrivalCoordinates.lat}&tolng=${arrivalCoordinates.lng}&date=${formatedDate}`
+    const url = `http://localhost:5000/journey?from=${departureCoordinates.lat}&to=${arrivalCoordinates.lng}&start=${formatedDate}`
+    window
+      .fetch(url, {
+        method: 'GET',
+        mode: 'no-cors'
+      })
+      .then(res => res.json())
+      .then(res => console.log(res))
   }
 
   return (

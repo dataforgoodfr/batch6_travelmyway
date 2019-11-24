@@ -1,4 +1,4 @@
-import React, { Component, fragment } from 'react'
+import React from 'react'
 import AlgoliaPlaces from 'algolia-places-react'
 
 const AutocompleteAddress = ({ changeAddress, placeholder }) => {
@@ -11,16 +11,8 @@ const AutocompleteAddress = ({ changeAddress, placeholder }) => {
         language: 'fr'
         // Other options from https://community.algolia.com/places/documentation.html#options
       }}
-      onChange={({ query, rawAnswer, suggestion, suggestionIndex }) => changeAddress(suggestion)}
-      onSuggestions={({ rawAnswer, query, suggestions }) =>
-        console.log(
-          'Fired when dropdown receives suggestions. You will receive the array of suggestions that are displayed.'
-        )
-      }
-      onCursorChanged={({ rawAnswer, query, suggestion, suggestonIndex }) =>
-        console.log('Fired when arrows keys are used to navigate suggestions.')
-      }
-      onClear={() => console.log('Fired when the input is cleared.')}
+      onChange={({ suggestion }) => changeAddress(suggestion)}
+      onClear={() => changeAddress()}
       onLimit={({ message }) => console.log('Fired when you reached your current rate limit.')}
       onError={({ message }) =>
         console.log(
