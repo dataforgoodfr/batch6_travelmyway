@@ -1,13 +1,15 @@
 import requests
 import pandas as pd
+from loguru import logger
+
 import copy
 import json
 import io
-import TMW as tmw
+from app import TMW as tmw
 from datetime import datetime as dt
 from geopy.distance import distance
-import constants
-from co2_emissions import calculate_co2_emissions
+from app import constants
+from app import co2_emissions
 
 # Get all train and bus station from trainline thanks to https://github.com/tducret/trainline-python
 _STATIONS_CSV_FILE = "https://raw.githubusercontent.com/trainline-eu/stations/master/stations.csv"
@@ -40,7 +42,7 @@ def update_trainline_stops(url=_STATIONS_CSV_FILE):
                            'is_bus_station', 'is_train_station']]
     all_stops['geoloc_good'] = all_stops.apply(lambda x: not(pd.isna(x.geoloc[0]) or pd.isna(x.geoloc[1])),axis=1)
     all_stops = all_stops[all_stops.geoloc_good]
-    print(f'{all_stops.shape[0]} stops were found. Here is an example:\n {all_stops.sample()}')
+    logger.info(f'{all_stops.shape[0]} stops were found. Here is an example:\n {all_stops.sample()}')
     return all_stops
 
 
@@ -52,10 +54,11 @@ _PASSENGER = [{'id': '3c29a998-270e-416b-83f0-936b606638da', 'age': 39,
 
 # function to get all trainline fares and trips
 def search_for_all_fares(date, origin_id, destination_id, passengers, include_bus=True, segment_details=True):
+    # logger.info('inside search for fares')
     # Define headers (according to github/trainline)
     headers = {
         'Accept': 'application/json',
-        'User-Agent': 'CaptainTrain/43(4302) Android/4.4.2(19)',
+        'User-Agent': 'CaptainTrain/1574360965(web) (Ember 3.5.1)',
         'Accept-Language': 'fr',
         'Content-Type': 'application/json; charset=UTF-8',
         'Host': 'www.trainline.eu',
@@ -78,12 +81,12 @@ def search_for_all_fares(date, origin_id, destination_id, passengers, include_bu
             }
     post_data = json.dumps(data)
 
-    tmp = dt.now()
+    # logger.info('juste avant le post trainline')
     ret = session.post(url="https://www.trainline.eu/api/v5_1/search",
                        headers=headers,
                        data=post_data)
-
     # print(f'API call duration {dt.now() - tmp}')
+    # logger.info('avant le format')
 
     return format_trainline_response(ret.json(), segment_details=segment_details)
 
@@ -93,6 +96,7 @@ def format_trainline_response(rep_json, segment_details=True, only_sellable=True
     """
     Format complicated json with information flighing around into a clear dataframe
     """
+    # logger.info(rep_json)
     # get folders (aggregated outbound or inbound trip)
     folders = pd.DataFrame.from_dict(rep_json['folders'])
 
@@ -117,7 +121,6 @@ def format_trainline_response(rep_json, segment_details=True, only_sellable=True
                             left_on='departure_station_id', right_on='id', suffixes=['', '_depart'])
     folders = folders.merge(stations[['id', 'name', 'country', 'latitude', 'longitude']], left_on='arrival_station_id',
                             right_on='id', suffixes=['', '_arrival'])
-
     # If no details asked we stay at leg granularity
     if not segment_details:
         return folders[
@@ -168,6 +171,7 @@ def format_trainline_response(rep_json, segment_details=True, only_sellable=True
 def trainline_journeys(df_response, _id=0):
     # affect a price to each leg
     df_response['price_step'] = df_response.cents / 100
+
     # Compute distance for each leg
     # print(df_response.columns)
     df_response['distance_step'] = df_response.apply(lambda x: distance(x.geoloc_depart_seg, x.geoloc_arrival_seg).m,
@@ -177,10 +181,12 @@ def trainline_journeys(df_response, _id=0):
         'coach': constants.TYPE_COACH,
         'train': constants.TYPE_TRAIN,
     }
+
     lst_journeys = list()
     # all itineraries :
     # print(f'nb itinerary : {df_response.id_global.nunique()}')
     for itinerary_id in df_response.id_global.unique():
+
         itinerary = df_response[df_response.id_global == itinerary_id].reset_index(drop=True)
         # boolean to know whether and when there will be a transfer after the leg
         itinerary['next_departure'] = itinerary.departure_date_seg.shift(-1)
@@ -200,13 +206,14 @@ def trainline_journeys(df_response, _id=0):
                                 arrival_point=[itinerary.latitude.iloc[0], itinerary.longitude.iloc[0]],
                                 geojson=[],
                                 )
+
         lst_sections.append(step)
         i = i + 1
         # Go through all steps of the journey
         for index, leg in itinerary.iterrows():
             local_distance_m = distance(leg.geoloc_depart_seg, leg.geoloc_arrival_seg).m
             local_transportation_type = tranportation_mean_to_type[leg.transportation_mean]
-            local_emissions = calculate_co2_emissions(local_transportation_type, constants.DEFAULT_CITY,
+            local_emissions = co2_emissions.calculate_co2_emissions(local_transportation_type, constants.DEFAULT_CITY,
                                                       constants.DEFAULT_FUEL, constants.DEFAULT_NB_SEATS,
                                                       constants.DEFAULT_NB_KM) * \
                               constants.DEFAULT_NB_PASSENGERS * local_distance_m
@@ -254,6 +261,7 @@ def trainline_journeys(df_response, _id=0):
         category_journey = list()
         for step in journey_train.steps:
             if step.type not in [constants.TYPE_TRANSFER, constants.TYPE_WAIT]:
+                logger.info('add category')
                 category_journey.append(step.type)
 
         journey_train.category = list(set(category_journey))
@@ -330,11 +338,13 @@ def main(query):
     detail_response = pd.DataFrame()
     for departure_station_id in stops['departure']:
         for arrival_station_id in stops['arrival']:
-            print(f'call Trainline API from {departure_station_id}, to {arrival_station_id }')
+            logger.info(f'call Trainline API from {departure_station_id}, to {arrival_station_id }')
             detail_response = detail_response.append(search_for_all_fares(query.departure_date, int(departure_station_id),
                                                                           int(arrival_station_id), _PASSENGER,
                                                                           segment_details=True))
+
     all_journeys = trainline_journeys(detail_response)
+
     # for i in all_journeys:
     #     print(i.to_json())
 

@@ -1,9 +1,9 @@
 import openrouteservice
 from openrouteservice import convert
-import constants
-import tmw_api_keys
-from datetime import timedelta 
-import TMW as tmw
+from app import constants
+from app import tmw_api_keys
+from datetime import timedelta
+from app import TMW as tmw
 
 """
 OPEN ROUTE SERVICES FUNCTIONS

@@ -1,15 +1,16 @@
 import requests
+from loguru import logger
 import pandas as pd
 import copy
 import zipfile
 import io
-import TMW as tmw
+from app import TMW as tmw
 from datetime import datetime as dt
 from geopy.distance import distance
-import tmw_api_keys
+from app import tmw_api_keys
 import time
-import constants
-from co2_emissions import calculate_co2_emissions
+from app import constants
+from app.co2_emissions import calculate_co2_emissions
 
 pd.set_option('display.max_columns', 999)
 pd.set_option('display.width', 1000)
@@ -36,7 +37,7 @@ def create_airport_database():
     airports['geoloc'] = airports.apply(lambda x: [x.latitude,x.longitude], axis=1)
     airports['Code_sky'] = airports.apply(lambda x: x.Code + '-sky', axis=1)
 
-    print(f'found {airports.shape[0]} airports, here is an example: \n {airports[airports.latitude!=0.0].sample()} ')
+    logger.info(f'found {airports.shape[0]} airports, here is an example: \n {airports[airports.latitude!=0.0].sample()} ')
     return airports
 
 
@@ -187,7 +188,7 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
         try:
             # Is there an error with the query ?
             error = response.json()['ValidationErrors']
-            print(error)
+            logger.warning(error)
             return pd.DataFrame()
         except KeyError:
             if try_number < 3:
@@ -376,7 +377,7 @@ def main(query):
     # Let's call the API for every couple airport departure and arrival
     for airport_dep in airports['departure']:
         for airport_arrival in airports['arrival']:
-            print(f'call Skyscanner from {airport_dep} to {airport_arrival}')
+            logger.info(f'call Skyscanner from {airport_dep} to {airport_arrival}')
             json_query = {
                 'query': {
                     'start': {
