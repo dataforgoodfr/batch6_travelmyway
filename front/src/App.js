@@ -1,7 +1,7 @@
 import React from 'react'
 import { BrowserRouter as Router, Switch, Route } from 'react-router-dom'
 import Header from './components/Header'
-import SearchContainer from './searchPage/SearchContainer'
+import Home from './Home'
 import ResultListContainer from './resultList/ResultListContainer'
 import './style/main.scss'
 
@@ -12,7 +12,7 @@ function App() {
       <Router>
         <Switch>
           <Route path="/results" render={() => <ResultListContainer />} />
-          <Route path="/" exact render={() => <SearchContainer />} />
+          <Route path="/" exact render={() => <Home />} />
         </Switch>
       </Router>
     </>
