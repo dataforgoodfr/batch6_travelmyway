@@ -1,9 +1,10 @@
 import openrouteservice
 from openrouteservice import convert
-import constants
-import tmw_api_keys
-from datetime import timedelta 
-import TMW as tmw
+from app import constants
+from app import tmw_api_keys
+from datetime import timedelta
+from app import TMW as tmw
+from app import co2_emissions
 
 """
 OPEN ROUTE SERVICES FUNCTIONS
@@ -11,14 +12,14 @@ OPEN ROUTE SERVICES FUNCTIONS
 
 
 def start_ORS_client():
-    ORS_api_key = tmw_api_keys.ORS_api_key
+    ORS_api_key = tmw_api_keys.ORS_API_KEY
     ORS_client = openrouteservice.Client(key=ORS_api_key) # Specify your personal API key
     return ORS_client
 
 
 def ORS_profile(profile): # Should be integrated into CONSTANTS.py
     dict_ORS_profile = {
-        "driving-car": "car",
+        "driving-car": constants.TYPE_CAR,
         "driving-hgv": "",
         "foot-walking": "walk",
         "foot-hiking": "walk",
@@ -47,13 +48,19 @@ def ORS_query_directions(query, profile='driving-car', toll_price=True, _id=0, g
 
     geojson = convert.decode_polyline(ORS_step['routes'][0]['geometry'])
 
+    local_distance = ORS_step['routes'][0]['summary']['distance']
+    local_emissions = co2_emissions.calculate_co2_emissions(constants.TYPE_COACH, constants.DEFAULT_CITY,
+                                              constants.DEFAULT_FUEL, constants.DEFAULT_NB_SEATS,
+                                              constants.DEFAULT_NB_KM) * \
+                      constants.DEFAULT_NB_PASSENGERS * local_distance
+
     step = tmw.journey_step(_id,
                         _type=ORS_profile(profile),
                         label=profile,
-                        distance_m=ORS_step['routes'][0]['summary']['distance'],
+                        distance_m=local_distance,
                         duration_s=ORS_step['routes'][0]['summary']['duration'],
                         price_EUR=[ORS_gas_price(ORS_step['routes'][0]['summary']['distance'])],
-                        gCO2=0,
+                        gCO2=local_emissions,
                         geojson=geojson,
                         )
     # Correct arrival_date based on departure_date
@@ -61,7 +68,17 @@ def ORS_query_directions(query, profile='driving-car', toll_price=True, _id=0, g
 
     # Add toll price (optional)
     step = ORS_add_toll_price(step) if toll_price else step
-    return step
+
+    ors_journey = tmw.journey(0, steps=[step])
+    # Add category
+    category_journey = list()
+    for step in ors_journey.steps:
+        if step.type not in [constants.TYPE_TRANSFER, constants.TYPE_WAIT]:
+            category_journey.append(step.type)
+
+    ors_journey.category = list(set(category_journey))
+
+    return ors_journey.update()
 
 def ORS_gas_price(distance_m, gas_price_EUR=1.5, car_consumption=0.0664):
     distance_km = distance_m / 1000

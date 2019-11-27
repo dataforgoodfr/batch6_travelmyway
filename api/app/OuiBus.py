@@ -3,11 +3,12 @@ import pandas as pd
 import json
 from datetime import datetime as dt
 import copy
+from loguru import logger
 from geopy.distance import distance
-import tmw_api_keys
-import TMW as tmw
-import constants
-from co2_emissions import calculate_co2_emissions
+from app import tmw_api_keys
+from app import TMW as tmw
+from app import constants
+from app.co2_emissions import calculate_co2_emissions
 
 pd.set_option('display.max_columns', 999)
 pd.set_option('display.width', 1000)
@@ -78,7 +79,7 @@ def update_stop_list():
     stops_rich['id_meta_gare'] = stops_rich.id_meta_gare.combine_first(stops_rich.id)
     stops_rich['geoloc'] = stops_rich.apply(lambda x: [x.latitude, x.longitude], axis=1)
 
-    print(f'{stops_rich.shape[0]} Ouibus stops were found, here is an example:\n {stops_rich.sample()}')
+    logger.info(f'{stops_rich.shape[0]} Ouibus stops were found, here is an example:\n {stops_rich.sample()}')
     return stops_rich
 
 
@@ -157,7 +158,7 @@ def compute_trips(date, passengers, geoloc_origin, geoloc_destination):
     all_trips = pd.DataFrame()
     for origin_meta_gare_id in origin_meta_gare_ids:
         for destination_meta_gare_id in destination_meta_gare_ids:
-            print(f'call OuiBus API from {origin_meta_gare_id} to {destination_meta_gare_id}')
+            logger.info(f'call OuiBus API from {origin_meta_gare_id} to {destination_meta_gare_id}')
             # make sure we don't call the API for a useless trip
             if origin_meta_gare_id != destination_meta_gare_id:
                 all_trips = all_trips.append(
@@ -165,7 +166,7 @@ def compute_trips(date, passengers, geoloc_origin, geoloc_destination):
 
     # Enrich with stops info
     if all_trips.empty:
-        print('no trip found from OuiBus')
+        logger.info('no trip found from OuiBus')
         return pd.DataFrame()
 
     all_trips = all_trips.merge(_ALL_BUS_STOPS[['id', 'geoloc', 'short_name']],
@@ -185,7 +186,7 @@ def ouibus_journeys(df_response, _id=0):
                                                      axis=1)
     lst_journeys = list()
     # all itineraries :
-    print(f'nb itinerary : {df_response.id.nunique()}')
+    # logger.info(f'nb itinerary : {df_response.id.nunique()}')
     for itinerary_id in df_response.id.unique():
         itinerary = df_response[df_response.id == itinerary_id].reset_index(drop=True)
         # boolean to know whether and when there will be a transfer after the leg
@@ -269,11 +270,8 @@ def ouibus_journeys(df_response, _id=0):
 def main(query):
     all_trips = compute_trips(query.departure_date, _PASSENGER, query.start_point, query.end_point)
 
-    for i in ouibus_journeys(all_trips):
-        print(i.to_json())
-
     if all_trips.empty:
-        return None
+        return list()
     else:
         return ouibus_journeys(all_trips)
 

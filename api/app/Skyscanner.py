@@ -1,15 +1,16 @@
 import requests
+from loguru import logger
 import pandas as pd
 import copy
 import zipfile
 import io
-import TMW as tmw
+from app import TMW as tmw
 from datetime import datetime as dt
 from geopy.distance import distance
-import tmw_api_keys
+from app import tmw_api_keys
 import time
-import constants
-from co2_emissions import calculate_co2_emissions
+from app import constants
+from app.co2_emissions import calculate_co2_emissions
 
 pd.set_option('display.max_columns', 999)
 pd.set_option('display.width', 1000)
@@ -36,7 +37,7 @@ def create_airport_database():
     airports['geoloc'] = airports.apply(lambda x: [x.latitude,x.longitude], axis=1)
     airports['Code_sky'] = airports.apply(lambda x: x.Code + '-sky', axis=1)
 
-    print(f'found {airports.shape[0]} airports, here is an example: \n {airports[airports.latitude!=0.0].sample()} ')
+    logger.info(f'found {airports.shape[0]} airports, here is an example: \n {airports[airports.latitude!=0.0].sample()} ')
     return airports
 
 
@@ -45,13 +46,16 @@ _AIRPORT_DF = create_airport_database()
 
 def skyscanner_query_directions(query):
     # extract departure and arrival points
+    logger.info(query['query']['start']['coord'])
+    # departure_points = ';'.join(query['query']['start']['coord'])
+    # arrival_points = ';'.join(query['query']['to']['coord'])
     departure_point = query['query']['start']['coord']
     arrival_point = query['query']['to']['coord']
     # extract departure date
     date_departure = query['query']['datetime']
     df_response = get_planes_from_skyscanner(date_departure, None, departure_point, arrival_point, details=True)
     if df_response.empty:
-        return None
+        return list()
     else:
         return skyscanner_journeys(df_response)
 
@@ -187,7 +191,7 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
         try:
             # Is there an error with the query ?
             error = response.json()['ValidationErrors']
-            print(error)
+            logger.warning(error)
             return pd.DataFrame()
         except KeyError:
             if try_number < 3:
@@ -205,6 +209,10 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
     }
 
     response = requests.request("GET", url, headers=headers, params=querystring)
+    logger.info(response.status_code)
+    # logger.info(response.content)
+    while response.json()['Status'] != 'UpdatesComplete':
+        response = requests.request("GET", url, headers=headers, params=querystring)
     # print('le statut de la reponse est ' + response.json()['Status'])
     if len(response.json()['Legs']) > 0:
         return format_skyscanner_response(response.json(), one_way, details)
@@ -355,8 +363,9 @@ def get_airports_from_geo_locs(geoloc_dep, geoloc_arrival):
 
     # We get the 3 closest airports for departure and arrival
     airport_list = dict()
-    airport_list['departure'] = stops_tmp.sort_values(by='distance_dep').Code_sky.head(3)
-    airport_list['arrival'] = stops_tmp.sort_values(by='distance_arrival').Code_sky.head(3)
+    airport_list['departure'] = stops_tmp.sort_values(by='distance_dep').Code_sky.head(3).get_values()
+    airport_list['arrival'] = stops_tmp.sort_values(by='distance_arrival').Code_sky.head(3).get_values()
+    logger.info(f'airports {airport_list}')
     return airport_list
 
 
@@ -373,10 +382,24 @@ def get_range_km(local_distance_m):
 def main(query):
     airports = get_airports_from_geo_locs(query.start_point, query.end_point)
     all_responses = list()
+    # Let's try calling API for several airports at a time
+    #json_query = {
+    #                'query': {
+    #                    'start': {
+    #                        'coord': airports['departure'],
+    #                    },
+    #                    'to': {
+    #                        'coord': airports['arrival'],
+    #                    },
+    #                    'datetime': query.departure_date
+    #                    }
+    #            }
+    #all_responses = skyscanner_query_directions(json_query)
+
     # Let's call the API for every couple airport departure and arrival
     for airport_dep in airports['departure']:
         for airport_arrival in airports['arrival']:
-            print(f'call Skyscanner from {airport_dep} to {airport_arrival}')
+            logger.info(f'call Skyscanner from {airport_dep} to {airport_arrival}')
             json_query = {
                 'query': {
                     'start': {
@@ -393,6 +416,7 @@ def main(query):
                 for trip in single_route:
                     all_responses.append(trip)
             # print(f'all good from {airport_dep} to {airport_arrival}')
+
 
     all_reponses_json = list()
     for journey_sky in all_responses:

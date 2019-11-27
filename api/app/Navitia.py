@@ -1,7 +1,8 @@
 import pandas as pd
-import tmw_api_keys
-import TMW as tmw
-import constants
+from loguru import logger
+from app import tmw_api_keys
+from app import TMW as tmw
+from app import constants
 # import folium
 from navitia_client import Client
 from shapely.geometry import Point
@@ -72,13 +73,18 @@ def start_navitia_client():
     return navitia_client
 
 
+navitia_client = start_navitia_client()
+_NAVITIA_COV = get_navitia_coverage(navitia_client)
+logger.info(_NAVITIA_COV.head(1))
+
 def navitia_query_directions(query, _id=0):
     navitia_client = start_navitia_client()
-    _NAVITIA_COV = get_navitia_coverage(navitia_client)
     try:
         navitia_region = find_navita_coverage_for_points(query.start_point, query.end_point, _NAVITIA_COV)
     except:
-        raise ValueError("ERROR: COVERAGE ISSUE")
+        logger.warning('on a pas trouve la region :(')
+        return None
+        # raise ValueError("ERROR: COVERAGE ISSUE")
     # if start.navitia['name'] != end.navitia['name']:  # region name (ex: idf-fr)
     #     print('ERROR: NAVITIA query on 2 different regions')
 
@@ -90,12 +96,11 @@ def navitia_query_directions(query, _id=0):
     url = url + '&data_freshness=base_schedule&max_nb_journeys=3'
 
     step = navitia_client.raw(url, multipage=False)
-
     if step.status_code == 200:
         return navitia_journeys(step.json())
 
     else:
-        print(f'ERROR {step.status_code} from Navitia')
+        logger.warning(f'ERROR {step.status_code} from Navitia')
         return None
 
 
@@ -129,7 +134,7 @@ def navitia_coverage_gpspoint(lon, lat):  #
         for i, region in enumerate(coverage['regions']):
             coverage['regions'][i]['shape'] = navitia_geostr_to_polygon(region['shape'])
     except:
-        print('ERROR: AREA NOT COVERED BY NAVITIA (lon:{},lat:{})'.format(lon, lat))
+        logger.error('ERROR: AREA NOT COVERED BY NAVITIA (lon:{},lat:{})'.format(lon, lat))
         return False
     return coverage
 
@@ -161,7 +166,7 @@ def navitia_journeys(json, _id=0):
     try:
         journeys = json['journeys']
     except:
-        print('ERROR {}'.format(json['error']))
+        logger.warning('ERROR {}'.format(json['error']))
         return None
     for j in json['journeys']:
         i = _id
@@ -171,9 +176,9 @@ def navitia_journeys(json, _id=0):
             try:
                 lst_sections.append(navitia_journeys_sections_type(section, _id=i))
             except:
-                print('ERROR : ')
-                print('id: {}'.format(i))
-                print(section)
+                logger.warning('NAvitia ERROR : ')
+                logger.warning('id: {}'.format(i))
+                logger.warning(section)
             i = i + 1
         lst_journeys.append(tmw.journey(_id, lst_sections))
     return lst_journeys
