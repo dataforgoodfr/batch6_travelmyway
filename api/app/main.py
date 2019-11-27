@@ -12,6 +12,7 @@ from time import perf_counter
 Build a multi-modal journey
 """
 
+
 def filter_and_label_relevant_journey(journey_list):
     filtered_journeys = list()
     nb_journey_per_label = min(len(journey_list), 2)
@@ -63,7 +64,7 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
     ors_journey = ORS.ORS_query_directions(query_start_finish)
     # Stop the stopwatch / counter
     t1_stop = perf_counter()
-    logger.info("Elapsed time during the whole program in seconds:", t1_stop-t1_start)
+    logger.info(f'Elapsed time during the interurban API calls in seconds: {t1_stop-t1_start}')
 
     all_journeys = trainline_journeys + skyscanner_journeys + ouibus_journeys
     i = 0
@@ -85,7 +86,6 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
         else:
             logger.info(f'remove {interurban_journey.category}')
             all_journeys.remove(interurban_journey)
-            #interurban_journey.reset()
 
     all_journeys.append(ors_journey)
 
@@ -95,7 +95,7 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
     return filtered_journeys
 
 
-def main(departure_date='2019-11-28', geoloc_dep=[48.85, 2.35], geoloc_arrival=[43.59053, 1.42299]):
+def main(departure_date='2019-11-28', geoloc_dep=[47.218,-1.554], geoloc_arrival=[45.067,7.682]):
     all_trips = compute_complete_journey(departure_date, geoloc_dep, geoloc_arrival)
 
     for i in all_trips:
