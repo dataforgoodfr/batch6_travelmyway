@@ -1,6 +1,7 @@
 import flask
 from flask import request
 from flask import json
+from flask_json import json_response
 from app import main
 from loguru import logger
 
@@ -97,7 +98,8 @@ def compute_fake_journey():
         return "<h1>KO</h1><p>geoloc format not recognized</p>"
     try:
         result = json.dumps(generate_fake_journey())
-        return result, 200
+        # logger.info(result)
+        return json_response(status_=200, data_=result)
     except Exception:
         return "Server error", 500
 
