@@ -3,7 +3,6 @@ import pandas as pd
 from app import constants
 from loguru import logger
 
-logger.info(f'before le truc')
 
 path = os.path.join(os.getcwd(), constants.ADEME_LOC_DB_PATH)#
 try:
@@ -54,9 +53,9 @@ def calculate_co2_emissions_old(type_transport, type_city, fuel, nb_seats, nb_km
 
 
 def calculate_co2_emissions(type_transport, type_city, fuel, nb_seats, nb_km):
-    logger.info(f'inside co2')
-    logger.info('djbfk')
-    logger.info(f'constants.ADEME_LOC_DB_PATH {constants.ADEME_LOC_DB_PATH}')
+    # logger.info(f'inside co2')
+    # logger.info('djbfk')
+    # logger.info(f'constants.ADEME_LOC_DB_PATH {constants.ADEME_LOC_DB_PATH}')
     # path = os.path.join(os.getcwd(), constants.ADEME_LOC_DB_PATH)
     # carbon_db = pd.read_csv(path, delimiter=';')
     carbon_db = _CARBON_DB
