@@ -46,13 +46,16 @@ _AIRPORT_DF = create_airport_database()
 
 def skyscanner_query_directions(query):
     # extract departure and arrival points
+    logger.info(query['query']['start']['coord'])
+    # departure_points = ';'.join(query['query']['start']['coord'])
+    # arrival_points = ';'.join(query['query']['to']['coord'])
     departure_point = query['query']['start']['coord']
     arrival_point = query['query']['to']['coord']
     # extract departure date
     date_departure = query['query']['datetime']
     df_response = get_planes_from_skyscanner(date_departure, None, departure_point, arrival_point, details=True)
     if df_response.empty:
-        return None
+        return list()
     else:
         return skyscanner_journeys(df_response)
 
@@ -206,6 +209,10 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
     }
 
     response = requests.request("GET", url, headers=headers, params=querystring)
+    logger.info(response.status_code)
+    # logger.info(response.content)
+    while response.json()['Status'] != 'UpdatesComplete':
+        response = requests.request("GET", url, headers=headers, params=querystring)
     # print('le statut de la reponse est ' + response.json()['Status'])
     if len(response.json()['Legs']) > 0:
         return format_skyscanner_response(response.json(), one_way, details)
@@ -356,8 +363,9 @@ def get_airports_from_geo_locs(geoloc_dep, geoloc_arrival):
 
     # We get the 3 closest airports for departure and arrival
     airport_list = dict()
-    airport_list['departure'] = stops_tmp.sort_values(by='distance_dep').Code_sky.head(3)
-    airport_list['arrival'] = stops_tmp.sort_values(by='distance_arrival').Code_sky.head(3)
+    airport_list['departure'] = stops_tmp.sort_values(by='distance_dep').Code_sky.head(3).get_values()
+    airport_list['arrival'] = stops_tmp.sort_values(by='distance_arrival').Code_sky.head(3).get_values()
+    logger.info(f'airports {airport_list}')
     return airport_list
 
 
@@ -374,6 +382,20 @@ def get_range_km(local_distance_m):
 def main(query):
     airports = get_airports_from_geo_locs(query.start_point, query.end_point)
     all_responses = list()
+    # Let's try calling API for several airports at a time
+    #json_query = {
+    #                'query': {
+    #                    'start': {
+    #                        'coord': airports['departure'],
+    #                    },
+    #                    'to': {
+    #                        'coord': airports['arrival'],
+    #                    },
+    #                    'datetime': query.departure_date
+    #                    }
+    #            }
+    #all_responses = skyscanner_query_directions(json_query)
+
     # Let's call the API for every couple airport departure and arrival
     for airport_dep in airports['departure']:
         for airport_arrival in airports['arrival']:
@@ -394,6 +416,7 @@ def main(query):
                 for trip in single_route:
                     all_responses.append(trip)
             # print(f'all good from {airport_dep} to {airport_arrival}')
+
 
     all_reponses_json = list()
     for journey_sky in all_responses:
