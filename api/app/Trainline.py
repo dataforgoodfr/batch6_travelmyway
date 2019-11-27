@@ -168,7 +168,7 @@ def format_trainline_response(rep_json, segment_details=True, only_sellable=True
              'flexibility', 'travel_class_seg']].sort_values(by=['id_global', 'departure_date_seg'])
 
 
-def trainline_journeys(df_response, _id=0):
+def trainline_journeys(df_response, departure_point, arrival_point, departure_date, _id=0):
     # affect a price to each leg
     df_response['price_step'] = df_response.cents / 100
 
@@ -255,8 +255,7 @@ def trainline_journeys(df_response, _id=0):
                 lst_sections.append(step)
                 i = i + 1
 
-        journey_train = tmw.journey(_id,
-                                  steps=lst_sections)
+        journey_train = tmw.journey(_id, departure_point, arrival_point, departure_date, steps=lst_sections)
         # Add category
         category_journey = list()
         for step in journey_train.steps:
@@ -319,8 +318,8 @@ def pandas_explode(df, column_to_explode):
 def get_stops_from_geo_locs(geoloc_dep, geoloc_arrival, max_distance_km=50):
     stops_tmp = _ALL_STATIONS.copy()
     # compute proxi for distance (since we only need to compare no need to take the earth curve into account...)
-    stops_tmp['distance_dep'] = stops_tmp.apply(lambda x: distance(geoloc_dep, x.geoloc).m, axis =1)
-    stops_tmp['distance_arrival'] = stops_tmp.apply(lambda x: distance(geoloc_arrival, x.geoloc).m, axis =1)
+    stops_tmp['distance_dep'] = stops_tmp.apply(lambda x: distance(geoloc_dep, x.geoloc).m, axis=1)
+    stops_tmp['distance_arrival'] = stops_tmp.apply(lambda x: distance(geoloc_arrival, x.geoloc).m, axis=1)
 
     # We get all station within approx 55 km (<=> 0.5 of distance proxi)
     parent_station_id_list = {}
@@ -343,7 +342,7 @@ def main(query):
                                                                           int(arrival_station_id), _PASSENGER,
                                                                           segment_details=True))
 
-    all_journeys = trainline_journeys(detail_response)
+    all_journeys = trainline_journeys(detail_response, query.start_point, query.end_point, query.departure_date)
 
     # for i in all_journeys:
     #     print(i.to_json())

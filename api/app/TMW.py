@@ -6,7 +6,7 @@ import folium
 
 
 class journey:
-    def __init__(self, _id, steps=[]):
+    def __init__(self, _id, departure_point, arrival_point, departure_date, steps=[]):
         self.id = _id
         self.category = '' # car/train/plane
         self.label = []
@@ -16,10 +16,10 @@ class journey:
         self.total_duration = 0
         self.total_price_EUR = 0
         self.total_gCO2 = 0
-        self.departure_point = [0, 0]
-        self.arrival_point = [0, 0]
-        self.departure_date = dt.now()
-        self.arrival_date  = dt.now()
+        self.departure_point = departure_point
+        self.arrival_point = arrival_point
+        self.departure_date = departure_date
+        self.arrival_date = departure_date
         self.steps = steps
 
     def add(self, steps=[]):
@@ -133,17 +133,15 @@ class journey_step:
         return _map
 
 class query:
-    def __init__(self, _id, start_point, end_point, departure_date=None):
-        self.id = _id
+    def __init__(self, start_point, end_point, departure_date):
         self.start_point = start_point
         self.end_point = end_point
         self.departure_date = departure_date        # example of format (based on navitia): 20191012T063700
 
     def to_json(self):
-        json = {'id':self.id,
-                 'start':self.start_point,
-                 'end':self.end_point,
-                 'departure_date':self.departure_date,
+        json = {'start': self.start_point,
+                'end': self.end_point,
+                'departure_date': self.departure_date,
                 }
         return json
 

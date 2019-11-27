@@ -1,7 +1,7 @@
 import requests
 import pandas as pd
 import json
-from datetime import datetime as dt
+# from datetime import datetime as dt
 import copy
 from loguru import logger
 from geopy.distance import distance
@@ -95,7 +95,7 @@ def search_for_all_fares(date, origin_id, destination_id, passengers):
         "date": date,
         "passengers": passengers
     }
-    timestamp = dt.now()
+    # timestamp = dt.now()
     r = requests.post('https://api.idbus.com/v1/search', headers=headers, data=json.dumps(data))
     # print(dt.now() - timestamp)
     try:
@@ -177,13 +177,13 @@ def compute_trips(date, passengers, geoloc_origin, geoloc_destination):
     return format_ouibus_response(all_trips[all_trips.available])
 
 
-def ouibus_journeys(df_response, _id=0):
+def ouibus_journeys(df_response, departure_point, arrival_point, departure_date, _id=0):
     # affect a price to each leg
     df_response['price_step'] = df_response.price_cents / (df_response.nb_segments * 100)
     # Compute distance for each leg
     # print(df_response.columns)
-    df_response['distance_step'] = df_response.apply(lambda x: distance(x.geoloc_origin_seg, x.geoloc_destination_seg).m,
-                                                     axis=1)
+    df_response['distance_step'] = df_response.apply(lambda x: distance(x.geoloc_origin_seg,
+                                                                        x.geoloc_destination_seg).m, axis=1)
     lst_journeys = list()
     # all itineraries :
     # logger.info(f'nb itinerary : {df_response.id.nunique()}')
@@ -238,7 +238,7 @@ def ouibus_journeys(df_response, _id=0):
                 step = tmw.journey_step(i,
                                         _type=constants.TYPE_TRANSFER,
                                         label='',
-                                        distance_m=distance(leg.geoloc_destination_seg,leg.next_geoloc).m,
+                                        distance_m=distance(leg.geoloc_destination_seg, leg.next_geoloc).m,
                                         duration_s=(leg['next_departure'] - leg['arrival_seg']).seconds,
                                         price_EUR=[0],
                                         departure_point=leg.geoloc_destination_seg,
@@ -251,7 +251,7 @@ def ouibus_journeys(df_response, _id=0):
                 lst_sections.append(step)
                 i = i + 1
 
-        journey_ouibus = tmw.journey(_id, steps=lst_sections)
+        journey_ouibus = tmw.journey(_id, departure_point, arrival_point, departure_date, steps=lst_sections)
         # Add category
         category_journey = list()
         for step in journey_ouibus.steps:
@@ -273,7 +273,7 @@ def main(query):
     if all_trips.empty:
         return None
     else:
-        return ouibus_journeys(all_trips)
+        return ouibus_journeys(all_trips, query.start_point, query.end_point, query.departure_date)
 
 
 _ALL_BUS_STOPS = update_stop_list()

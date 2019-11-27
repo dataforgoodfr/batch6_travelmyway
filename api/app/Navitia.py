@@ -97,7 +97,7 @@ def navitia_query_directions(query, _id=0):
 
     step = navitia_client.raw(url, multipage=False)
     if step.status_code == 200:
-        return navitia_journeys(step.json())
+        return navitia_journeys(step.json(), query.start_point, query.end_point, query.departure_date)
 
     else:
         logger.warning(f'ERROR {step.status_code} from Navitia')
@@ -160,7 +160,7 @@ type = 'waiting' / 'transfer' / 'public_transport' / 'street_network' / 'stay_in
 """
 
 
-def navitia_journeys(json, _id=0):
+def navitia_journeys(json, departure_point, arrival_point, departure_date, _id=0):
     # all journeys loop
     lst_journeys = list()
     try:
@@ -180,7 +180,7 @@ def navitia_journeys(json, _id=0):
                 logger.warning('id: {}'.format(i))
                 logger.warning(section)
             i = i + 1
-        lst_journeys.append(tmw.journey(_id, lst_sections))
+        lst_journeys.append(tmw.journey(_id, departure_point, arrival_point, departure_date, steps=lst_sections))
     return lst_journeys
 
 

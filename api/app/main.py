@@ -49,10 +49,9 @@ def filter_and_label_relevant_journey(journey_list):
 
 def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.35], geoloc_arrival=[43.60,1.44]):
     # Let's create the start to finish query
-    query_start_finish = tmw.query(0, geoloc_dep, geoloc_arrival, departure_date)
+    query_start_finish = tmw.query(geoloc_dep, geoloc_arrival, departure_date)
     logger.info(f'query_start_finish{query_start_finish.to_json()}')
-    # Start the stopwatch / counter
-    t1_start = perf_counter()
+
     # First we look for intercities journeys
     trainline_journeys = Trainline.main(query_start_finish)
     logger.info('trainline good')
@@ -61,31 +60,25 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
     ouibus_journeys = OuiBus.main(query_start_finish)
     logger.info('ouibus good')
     ors_journey = ORS.ORS_query_directions(query_start_finish)
-    # Stop the stopwatch / counter
-    t1_stop = perf_counter()
-    logger.info("Elapsed time during the whole program in seconds:", t1_stop-t1_start)
+    logger.info('ors good')
 
     all_journeys = trainline_journeys + skyscanner_journeys + ouibus_journeys
-    i = 0
     logger.info(f'we found {len(all_journeys)} inter urban journeys')
+
+    # Start the stopwatch / counter
+    t1_start = perf_counter()
     # Then we call Navitia to get the beginning and the end of the journey
-    for interurban_journey in all_journeys:
-        interurban_journey.id = i
-        i = i + 1
-        start_to_station_query = tmw.query(0, geoloc_dep, interurban_journey.steps[0].departure_point, departure_date)
-        logger.info(f'start_to_station_query{start_to_station_query.to_json()}')
-        start_to_station_steps = Navitia.navitia_query_directions(start_to_station_query)
-        station_to_arrival_query = tmw.query(0, interurban_journey.steps[-1].arrival_point, geoloc_arrival, departure_date)
-        logger.info(f'station_to_arrival_query{station_to_arrival_query.to_json()}')
-        station_to_arrival_steps = Navitia.navitia_query_directions(station_to_arrival_query)
-        if (start_to_station_steps is not None) & (station_to_arrival_steps is not None):
-            interurban_journey.add_steps(start_to_station_steps[0].steps, start_end=True)
-            interurban_journey.add_steps(station_to_arrival_steps[0].steps, start_end=False)
-            interurban_journey.update()
-        else:
-            logger.info(f'remove {interurban_journey.category}')
-            all_journeys.remove(interurban_journey)
-            #interurban_journey.reset()
+    for i_, interurban_journey in enumerate(all_journeys):
+        interurban_journey.id = i_
+        update_interurban_journey(interurban_journey)
+    # WIP IGOR
+    # from multiprocessing import Pool
+    # with Pool(5) as p:
+    #     p.map(update_interurban_journey, all_journeys)
+    # Stop the stopwatch / counter
+    t1_stop = perf_counter()
+    delta_time = t1_stop - t1_start
+    logger.info(f'Elapsed time during the whole program in seconds: {delta_time}')
 
     all_journeys.append(ors_journey)
 
@@ -94,6 +87,26 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
     filtered_journeys = [filtered_journey.to_json() for filtered_journey in filtered_journeys]
     return filtered_journeys
 
+
+def update_interurban_journey(interurban_journey):
+    start_to_station_query = tmw.query(interurban_journey.departure_point, interurban_journey.steps[0].departure_point,
+                                       interurban_journey.departure_date)
+    logger.info(f'start_to_station_query{start_to_station_query.to_json()}')
+    start_to_station_steps = Navitia.navitia_query_directions(start_to_station_query)
+    station_to_arrival_query = tmw.query(interurban_journey.steps[-1].arrival_point, interurban_journey.arrival_point,
+                                         interurban_journey.steps[-1].arrival_date)
+    logger.info(f'station_to_arrival_query{station_to_arrival_query.to_json()}')
+    station_to_arrival_steps = Navitia.navitia_query_directions(station_to_arrival_query)
+    if (start_to_station_steps is not None) & (station_to_arrival_steps is not None):
+        interurban_journey.add_steps(start_to_station_steps[0].steps, start_end=True)
+        interurban_journey.add_steps(station_to_arrival_steps[0].steps, start_end=False)
+        interurban_journey.update()
+    else:
+        logger.info(f'remove {interurban_journey.category}')
+        # TODO IGOR
+        # all_journeys.remove(interurban_journey)
+        #interurban_journey.reset()
+    return
 
 def main(departure_date='2019-11-28', geoloc_dep=[48.85, 2.35], geoloc_arrival=[43.59053, 1.42299]):
     all_trips = compute_complete_journey(departure_date, geoloc_dep, geoloc_arrival)

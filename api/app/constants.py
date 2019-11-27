@@ -1,6 +1,6 @@
 #PATHS
 # ADEME_LOC_DB_PATH = r'data\TMW_base_carbone.xlsx'
-ADEME_LOC_DB_PATH = r'data/EmissionFactor.csv'
+ADEME_LOC_DB_PATH = r'data\EmissionFactor.csv'
 
 # #SUBCATEGORIES
 # SUBCAT = 'subcategory_2'
@@ -53,6 +53,9 @@ CO2EQ_PASS_KM = "kgCO2eq/passenger.km"
 
 # UNITES
 UNIT_CONVERSION = 1
+
+# AVERAGE FUEL
+AVG_FUEL = 'avg'
 
 # WAITING_PERIODS
 WAITING_PERIOD_TRAINLINE = 15 * 60

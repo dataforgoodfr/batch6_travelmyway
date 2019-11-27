@@ -34,7 +34,7 @@ def create_airport_database():
     airports = airports[['Code', 'AirportName', 'City', 'Country', 'latitude', 'longitude']]
     # Filter airports with no Code (not very useful)
     airports = airports[~pd.isna(airports.Code)]
-    airports['geoloc'] = airports.apply(lambda x: [x.latitude,x.longitude], axis=1)
+    airports['geoloc'] = airports.apply(lambda x: [x.latitude, x.longitude], axis=1)
     airports['Code_sky'] = airports.apply(lambda x: x.Code + '-sky', axis=1)
 
     logger.info(f'found {airports.shape[0]} airports, here is an example: \n {airports[airports.latitude!=0.0].sample()} ')
@@ -49,15 +49,15 @@ def skyscanner_query_directions(query):
     departure_point = query['query']['start']['coord']
     arrival_point = query['query']['to']['coord']
     # extract departure date
-    date_departure = query['query']['datetime']
-    df_response = get_planes_from_skyscanner(date_departure, None, departure_point, arrival_point, details=True)
+    departure_date = query['query']['datetime']
+    df_response = get_planes_from_skyscanner(departure_date, None, departure_point, arrival_point, details=True)
     if df_response.empty:
         return None
     else:
-        return skyscanner_journeys(df_response)
+        return skyscanner_journeys(df_response, departure_point, arrival_point, departure_date)
 
 
-def skyscanner_journeys(df_response, _id=0):
+def skyscanner_journeys(df_response, departure_point, arrival_point, departure_date, _id=0):
     # affect a price to each leg
     df_response['price_step'] = df_response.PriceTotal_AR / df_response.nb_segments
     # Compute distance for each leg
@@ -102,8 +102,8 @@ def skyscanner_journeys(df_response, _id=0):
                                     duration_s=leg.Duration_seg * 60,
                                     price_EUR=[leg.price_step],
                                     gCO2=local_emissions,
-                                    departure_point = leg.geoloc_origin_seg,
-                                    arrival_point = leg.geoloc_destination_seg,
+                                    departure_point=leg.geoloc_origin_seg,
+                                    arrival_point=leg.geoloc_destination_seg,
                                     departure_stop_name=leg.Name_origin_seg,
                                     arrival_stop_name=leg.Name,
                                     departure_date=leg.DepartureDateTime,
@@ -135,7 +135,7 @@ def skyscanner_journeys(df_response, _id=0):
                 lst_sections.append(step)
                 i = i+1
 
-        journey_sky = tmw.journey(_id, steps=lst_sections)
+        journey_sky = tmw.journey(_id, departure_point, arrival_point, departure_date, steps=lst_sections)
         # Add category
         category_journey = list()
         for step in journey_sky.steps:
@@ -209,7 +209,7 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
     # print('le statut de la reponse est ' + response.json()['Status'])
     if len(response.json()['Legs']) > 0:
         return format_skyscanner_response(response.json(), one_way, details)
-    else :
+    else:
         # print(f'no flight found lets move on {response}')
         return pd.DataFrame()
 
@@ -395,9 +395,9 @@ def main(query):
                     all_responses.append(trip)
             # print(f'all good from {airport_dep} to {airport_arrival}')
 
-    all_reponses_json = list()
-    for journey_sky in all_responses:
-        all_reponses_json.append(journey_sky.to_json())
+    # all_reponses_json = list()
+    # for journey_sky in all_responses:
+    #     all_reponses_json.append(journey_sky.to_json())
 
     return all_responses
 
