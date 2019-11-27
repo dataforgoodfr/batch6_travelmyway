@@ -271,7 +271,7 @@ def main(query):
     all_trips = compute_trips(query.departure_date, _PASSENGER, query.start_point, query.end_point)
 
     if all_trips.empty:
-        return None
+        return list()
     else:
         return ouibus_journeys(all_trips)
 
