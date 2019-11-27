@@ -54,7 +54,7 @@ def skyscanner_query_directions(query):
     # extract departure date
     date_departure = query['query']['datetime']
     df_response = get_planes_from_skyscanner(date_departure, None, departure_point, arrival_point, details=True)
-    if df_response.empty:
+    if df_response is None or df_response.empty:
         return list()
     else:
         return skyscanner_journeys(df_response)
@@ -211,11 +211,14 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
     response = requests.request("GET", url, headers=headers, params=querystring)
     logger.info(response.status_code)
     # logger.info(response.content)
-    while response.json()['Status'] != 'UpdatesComplete':
-        response = requests.request("GET", url, headers=headers, params=querystring)
+    try:
+        while response.json()['Status'] != 'UpdatesComplete':
+            response = requests.request("GET", url, headers=headers, params=querystring)
+    except:
+        return pd.DataFrame()
     # print('le statut de la reponse est ' + response.json()['Status'])
-    if len(response.json()['Legs']) > 0:
-        return format_skyscanner_response(response.json(), one_way, details)
+        if len(response.json()['Legs']) > 0:
+            return format_skyscanner_response(response.json(), one_way, details)
     else :
         # print(f'no flight found lets move on {response}')
         return pd.DataFrame()
