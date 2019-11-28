@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
+import fakeJourney from '../../fakeJourney'
 import AutocompleteAddress from './AutocompleteAddress'
 import DatePicker from './DatePicker'
 
-const SearchContainer = () => {
+const SearchContainer = ({ setResults }) => {
   const [departureCoordinates, setDepartureCoordinates] = useState({})
   const [arrivalCoordinates, setArrivalCoordinates] = useState({})
   const [startDate, setStartDate] = useState(new Date())
@@ -22,15 +23,15 @@ const SearchContainer = () => {
 
   const submitForm = () => {
     const formatedDate = startDate.toLocaleDateString()
+    setResults(fakeJourney)
     // const url = `http://localhost:5000/journey?fromlat=${departureCoordinates.lat}&fromlng=${departureCoordinates.lng}&tolat=${arrivalCoordinates.lat}&tolng=${arrivalCoordinates.lng}&date=${formatedDate}`
-    const url = `http://localhost:5000/journey?from=${departureCoordinates.lat}&to=${arrivalCoordinates.lng}&start=${formatedDate}`
-    window
-      .fetch(url, {
-        method: 'GET',
-        mode: 'no-cors'
-      })
-      .then(res => res.json())
-      .then(res => console.log(res))
+    const url = `http://localhost:5000/fake_journey?from=${departureCoordinates.lat}, ${departureCoordinates.lng}&to=${arrivalCoordinates.lng}, ${arrivalCoordinates.lat}&start=${formatedDate}`
+    // window
+    //   .fetch(url, {
+    //     method: 'GET',
+    //     mode: 'no-cors'
+    //   })
+    //   .then(res => res.json())
   }
 
   return (
@@ -59,8 +60,14 @@ const SearchContainer = () => {
 
       <div className="searchbar_bottom">
         <form action="" method="post" className="search-values">
-          <AutocompleteAddress placeholder="Départ" changeAddress={changeDepartureAddress} />
-          <AutocompleteAddress placeholder="Arrivée" changeAddress={changeArrivalAddress} />
+          <AutocompleteAddress
+            placeholder="9 rue d'Alexandrie, 75002 Paris"
+            changeAddress={changeDepartureAddress}
+          />
+          <AutocompleteAddress
+            placeholder="9 rue d'Alexandrie, 75002 Paris"
+            changeAddress={changeArrivalAddress}
+          />
           <DatePicker selectDate={changeStartDate} date={startDate} />
           <Link to="/results" onClick={submitForm} className="submit" />
         </form>

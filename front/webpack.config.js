@@ -1,21 +1,11 @@
 const HtmlWebPackPlugin = require('html-webpack-plugin')
-const dotenv = require('dotenv')
-const webpack = require('webpack')
 const path = require('path')
 
 module.exports = () => {
-  // call dotenv and it will return an Object with a parsed key
-  const env = dotenv.config().parsed
-
-  // reduce it to a nice object, the same as before
-  const envKeys = Object.keys(env).reduce((prev, next) => {
-    prev[`process.env.${next}`] = JSON.stringify(env[next])
-    return prev
-  }, {})
-
   return {
     devServer: {
-      contentBase: './dist'
+      contentBase: './dist',
+      historyApiFallback: true
     },
     output: {
       path: path.resolve(__dirname, 'dist'),
@@ -45,7 +35,7 @@ module.exports = () => {
           ]
         },
         {
-          test: /\.jpg$/,
+          test: /\.(woff|woff2|eot|ttf|otf|jpg|png)$/,
           use: [
             {
               loader: 'file-loader',
@@ -66,7 +56,6 @@ module.exports = () => {
       extensions: ['.js', '.jsx']
     },
     plugins: [
-      new webpack.DefinePlugin(envKeys),
       new HtmlWebPackPlugin({
         inject: false,
         template: './src/index.ejs',

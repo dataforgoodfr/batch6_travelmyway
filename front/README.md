@@ -1,5 +1,3 @@
-To run, project need a .env file with an available API_GOOGLE_KEY defined inside
-
 ## Available Scripts
 
 To start the project, you can run :

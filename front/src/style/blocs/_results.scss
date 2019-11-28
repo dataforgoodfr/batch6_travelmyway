@@ -1,7 +1,13 @@
 .page-results {
-    background-color: $bg_color;
+  background-color: $bg_color;
+  min-height: 100%;
 
-    nav.top-navbar {
-        margin-bottom: 42px;
-    }
+  .top-navbar {
+    margin-bottom: 50px;
+  }
+
+  .content-wrapper {
+    margin: 0 auto;
+    width: 70%;
+  }
 }
