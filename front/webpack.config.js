@@ -4,7 +4,8 @@ const path = require('path')
 module.exports = () => {
   return {
     devServer: {
-      contentBase: './dist'
+      contentBase: './dist',
+      historyApiFallback: true
     },
     output: {
       path: path.resolve(__dirname, 'dist'),
@@ -34,7 +35,7 @@ module.exports = () => {
           ]
         },
         {
-          test: /\.jpg$/,
+          test: /\.(woff|woff2|eot|ttf|otf|jpg|png)$/,
           use: [
             {
               loader: 'file-loader',

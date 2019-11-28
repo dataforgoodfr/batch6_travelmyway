@@ -4,8 +4,7 @@ import fakeJourney from '../../fakeJourney'
 import AutocompleteAddress from './AutocompleteAddress'
 import DatePicker from './DatePicker'
 
-const SearchContainer = () => {
-  console.log(fakeJourney)
+const SearchContainer = ({ setResults }) => {
   const [departureCoordinates, setDepartureCoordinates] = useState({})
   const [arrivalCoordinates, setArrivalCoordinates] = useState({})
   const [startDate, setStartDate] = useState(new Date())
@@ -24,15 +23,15 @@ const SearchContainer = () => {
 
   const submitForm = () => {
     const formatedDate = startDate.toLocaleDateString()
+    setResults(fakeJourney)
     // const url = `http://localhost:5000/journey?fromlat=${departureCoordinates.lat}&fromlng=${departureCoordinates.lng}&tolat=${arrivalCoordinates.lat}&tolng=${arrivalCoordinates.lng}&date=${formatedDate}`
     const url = `http://localhost:5000/fake_journey?from=${departureCoordinates.lat}, ${departureCoordinates.lng}&to=${arrivalCoordinates.lng}, ${arrivalCoordinates.lat}&start=${formatedDate}`
-    window
-      .fetch(url, {
-        method: 'GET',
-        mode: 'no-cors'
-      })
-      .then(res => res.json())
-      .then(res => console.log(res))
+    // window
+    //   .fetch(url, {
+    //     method: 'GET',
+    //     mode: 'no-cors'
+    //   })
+    //   .then(res => res.json())
   }
 
   return (
