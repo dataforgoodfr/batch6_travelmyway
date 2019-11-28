@@ -11,7 +11,7 @@ numpy==1.14.3
 openrouteservice==2.2.3
 pandas==0.23.0
 path.py==11.0.1
-requests==2.18.4
+requests==2.20.0
 requests-oauthlib==1.0.0
 Shapely==1.6.4.post2
 skyscanner==1.1.4
