@@ -1,16 +1,15 @@
 import React from 'react'
 import { Grid } from 'semantic-ui-react'
+import { Link } from 'react-router-dom'
 import ResultCard from './ResultCard'
 import Header from '../components/Header'
 import SearchContainer from '../search/SearchContainer'
-import fakeJourney from '../../fakeJourney'
 
-const ResultListContainer = () => {
-  const results = [fakeJourney]
+const ResultListContainer = ({ results, setResults }) => {
   return (
     <div className="page-results">
       <Header />
-      <SearchContainer />
+      <SearchContainer setResults={setResults} />
       <main className="content-wrapper">
         <Grid>
           <Grid.Row>
@@ -21,7 +20,9 @@ const ResultListContainer = () => {
               <div className="column">
                 <h2>Travel my Way vous recommande</h2>
                 {results.map(result => (
-                  <ResultCard result={result} key={result.id} />
+                  <Link key={result.id} to={`/results/${result.id}`}>
+                    <ResultCard result={result} />
+                  </Link>
                 ))}
               </div>
             </Grid.Column>
