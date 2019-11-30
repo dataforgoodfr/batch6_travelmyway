@@ -12,7 +12,7 @@ const renderStep = step => {
   return (
     <div key={step.id} className="step">
       {journeyType[step.type]}
-      <p className="text-info">{getDurationFromSeconds(step.duration_s)}</p>
+      <p className="text-info small">{getDurationFromSeconds(step.duration_s)}</p>
     </div>
   )
 }
@@ -28,21 +28,21 @@ const ResultCard = ({ result }) => {
         <div className="inline-flex">
           <div className="info-wrapper">
             <p className="text-large">{departureHour}</p>
-            <p className="text-info">départ</p>
+            <p className="text-info small">départ</p>
           </div>
           <div className="info-wrapper">
             <p className="text-large">{arrivalHour}</p>
-            <p className="text-info">arrivée</p>
+            <p className="text-info small">arrivée</p>
           </div>
         </div>
         <div className="inline-flex right">
           <div className="info-wrapper">
             <p className="text-large">{totalDuration}</p>
-            <p className="text-info">durée totale</p>
+            <p className="text-info small">durée totale</p>
           </div>
           <div className="info-wrapper">
             <p className="text-large">{result.total_price_EUR} €</p>
-            <p className="text-info">prix total</p>
+            <p className="text-info small">prix total</p>
           </div>
         </div>
       </div>

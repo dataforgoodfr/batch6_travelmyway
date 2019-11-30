@@ -43,6 +43,25 @@ p {
 .text-info {
   color: $info-color;
   font-family: $primary-font;
+  &.small {
+    font-size: 14px;
+  }
+  &.smaller {
+    font-size: 12px;
+  }
+}
+
+.ecology {
+  color: $green;
+  &.info {
+  }
+  &.big {
+    font-size: 18px;
+    margin-bottom: 0;
+    font-style: italic;
+    font-family: $primary-font;
+    font-weight: 300;
+  }
 }
 
 h2 {
@@ -50,4 +69,14 @@ h2 {
   font-family: 'Montserrat';
   font-weight: normal;
   font-size: 16px;
+}
+
+h3 {
+  font-family: 'Montserrat';
+}
+
+button {
+  &.primary {
+    color: $red;
+  }
 }
