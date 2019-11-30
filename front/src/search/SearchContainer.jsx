@@ -23,7 +23,7 @@ const SearchContainer = ({ setResults }) => {
 
   const submitForm = () => {
     const formatedDate = startDate.toLocaleDateString()
-    setResults(fakeJourney)
+    setResults([fakeJourney])
     // const url = `http://localhost:5000/journey?fromlat=${departureCoordinates.lat}&fromlng=${departureCoordinates.lng}&tolat=${arrivalCoordinates.lat}&tolng=${arrivalCoordinates.lng}&date=${formatedDate}`
     const url = `http://localhost:5000/fake_journey?from=${departureCoordinates.lat}, ${departureCoordinates.lng}&to=${arrivalCoordinates.lng}, ${arrivalCoordinates.lat}&start=${formatedDate}`
     // window
