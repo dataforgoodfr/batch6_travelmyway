@@ -20,7 +20,6 @@
         border: none;
         background-color: transparent;
         color: grey;
-        font-family: $font;
         font-size: 14px;
       }
     }
@@ -29,75 +28,50 @@
   &_bottom {
     padding: 5px;
 
-    form {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    input {
+      color: grey;
+      font-size: 14px;
+    }
 
-      input {
-        margin: 5px;
-        font-family: $font;
-        color: grey;
-        font-size: 14px;
-      }
+    .autocomplete-address {
+      min-width: 250px;
+      position: relative;
+      padding: 15px 15px 15px 40px;
+      flex-basis: 30%;
+      border-radius: 5px;
+      border: 0.5px solid lightgrey;
+      background: url('../img/svg/localisation.svg');
+      background-size: 16px;
+      background-repeat: no-repeat;
+      background-position: 5% 50%;
+      height: 50px;
+    }
 
-      .autocomplete-input {
-        min-width: 250px;
-        position: relative;
-        padding: 15px 15px 15px 40px;
-        width: 20%;
-        border-radius: 5px;
-        border: 0.5px solid lightgrey;
-        background: url('../img/svg/localisation.svg');
-        background-size: 6%;
-        background-repeat: no-repeat;
-        background-position: 5% 50%;
-      }
+    .submit {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: $primary-color;
+      background-image: url('../img/svg/search.svg');
+      background-size: 50%;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
 
-      .autocomplete-dropdown {
-        position: absolute;
-      }
+    .react-datepicker-wrapper {
+      width: 100%;
+    }
 
-      .suggestion-item {
-        background-color: white;
-        padding: 10px;
-      }
-
-      .suggestion-item--active {
-        background-color: #f9f9f9;
-        cursor: pointer;
-        padding: 10px;
-      }
-
-      .submit {
-        position: relative;
-        width: 50px;
-        height: 50px;
-        border-radius: 50%;
-        background: #2e3747;
-        background-image: url('../img/svg/search.svg');
-        background-size: 50%;
-        background-position: center;
-        background-repeat: no-repeat;
-      }
-
-      .date {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        position: relative;
-        min-width: 250px;
-        padding: 15px 15px 15px 40px;
-        width: 30%;
-        height: 50px;
-        border-radius: 5px;
-        border: 0.5px solid lightgrey;
-        background: url('../img/svg/calendar.svg');
-        background-size: 6%;
-        background-repeat: no-repeat;
-        background-position: 5% 50%;
-        box-sizing: border-box;
-      }
+    .date {
+      width: 100%;
+      padding: 15px 15px 15px 40px;
+      height: 50px;
+      border-radius: 5px;
+      border: 0.5px solid lightgrey;
+      background: url('../img/svg/calendar.svg');
+      background-size: 16px;
+      background-repeat: no-repeat;
+      background-position: 5% 50%;
     }
   }
 }
