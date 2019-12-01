@@ -18,4 +18,13 @@
     width: 100%;
     display: inline-flex;
   }
+
+  .step {
+    width: 50px;
+
+    .material-icons {
+      color: $primary-color;
+      font-size: 36px;
+    }
+  }
 }

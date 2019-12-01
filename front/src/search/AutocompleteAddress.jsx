@@ -5,6 +5,7 @@ const AutocompleteAddress = ({ changeAddress, placeholder }) => {
   return (
     <AlgoliaPlaces
       placeholder={placeholder}
+      className="autocomplete-address"
       options={{
         appId: 'plIMLBK6SAIV',
         apiKey: '3eafdf4bffe092bb1a6141c4eda52f9f',
