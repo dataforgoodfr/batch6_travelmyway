@@ -20,7 +20,6 @@
         border: none;
         background-color: transparent;
         color: grey;
-        font-family: $font;
         font-size: 14px;
       }
     }
@@ -36,7 +35,6 @@
 
       input {
         margin: 5px;
-        font-family: $font;
         color: grey;
         font-size: 14px;
       }
@@ -74,7 +72,7 @@
         width: 50px;
         height: 50px;
         border-radius: 50%;
-        background: #2e3747;
+        background: $primary-color;
         background-image: url('../img/svg/search.svg');
         background-size: 50%;
         background-position: center;
