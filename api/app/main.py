@@ -65,8 +65,9 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
     # Stop the stopwatch / counter
     t1_stop = perf_counter()
     logger.info(f'Elapsed time during the interurban API calls in seconds: {t1_stop-t1_start}')
-
+    logger.info('here are the plane journeys')
     all_journeys = trainline_journeys + skyscanner_journeys + ouibus_journeys
+    # all_journeys = skyscanner_journeys
     i = 0
     logger.info(f'we found {len(all_journeys)} inter urban journeys')
     # Then we call Navitia to get the beginning and the end of the journey
@@ -84,7 +85,12 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
             interurban_journey.add_steps(station_to_arrival_steps[0].steps, start_end=False)
             interurban_journey.update()
         else:
-            logger.info(f'remove {interurban_journey.category}')
+            logger.info(f'remove category {interurban_journey.category}')
+            logger.info(f'remove price {interurban_journey.total_price_EUR}')#
+            logger.info(f'remove price {interurban_journey.total_distance}')
+            logger.info(f'remove legs nb {len(interurban_journey.steps)}')
+            logger.info(f'last leg departs from {interurban_journey.steps[-1].departure_stop_name}')
+            logger.info(f'last leg arrives in  {interurban_journey.steps[-1].arrival_stop_name}')
             all_journeys.remove(interurban_journey)
 
     all_journeys.append(ors_journey)
@@ -95,7 +101,7 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
     return filtered_journeys
 
 
-def main(departure_date='2019-11-28', geoloc_dep=[47.218,-1.554], geoloc_arrival=[45.067,7.682]):
+def main(departure_date='2019-12-18', geoloc_dep=[47.218,-1.554], geoloc_arrival=[45.067,7.682]):
     all_trips = compute_complete_journey(departure_date, geoloc_dep, geoloc_arrival)
 
     for i in all_trips:
