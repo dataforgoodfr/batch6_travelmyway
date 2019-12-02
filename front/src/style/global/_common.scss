@@ -66,13 +66,13 @@ p {
 
 h2 {
   color: $primary-color;
-  font-family: 'Montserrat';
+  font-family: $secondary-font;
   font-weight: normal;
   font-size: 16px;
 }
 
 h3 {
-  font-family: 'Montserrat';
+  font-family: $secondary-font;
 }
 
 button {

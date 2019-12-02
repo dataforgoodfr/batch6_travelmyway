@@ -8,7 +8,7 @@ const DetailedResultCard = ({ result }) => {
   const totalPrice = `${result.total_price_EUR} €`
   const totalDuration = getDurationFromSeconds(result.total_duration)
   return (
-    <div className="card">
+    <div className="detailed-result-card">
       <Grid>
         <Grid.Row>
           <Grid.Column floated="left" width={5}>

@@ -5,7 +5,7 @@ import { getTimeFromDate, getDurationFromSeconds } from '../journey.utils'
 
 const StepsCard = ({ steps }) => {
   return (
-    <div className="card">
+    <div className="steps-card">
       {steps.map((step, i) => {
         const formattedDate = getTimeFromDate(step.departure_date)
         const formattedDuration = getDurationFromSeconds(step.duration_s)

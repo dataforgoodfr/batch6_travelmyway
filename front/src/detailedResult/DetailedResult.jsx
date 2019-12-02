@@ -24,11 +24,11 @@ const DetailedResult = ({ result, results }) => {
           </Grid.Row>
           <Grid.Row>
             <Grid.Column width={8}>
-              <StepsCard steps={result.journey_steps}></StepsCard>
+              <StepsCard steps={result.journey_steps} />
             </Grid.Column>
             <Grid.Column width={8}>
               <h3 className="ecology">{totalCO2InKg} de CO2 émis</h3>
-              <EcologyCard></EcologyCard>
+              <EcologyCard />
               <p>Les autres trajets écologiques</p>
               {results.map(result => (
                 <Link key={result.id} to={`/results/${result.id}`}>

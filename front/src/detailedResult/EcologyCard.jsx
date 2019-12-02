@@ -2,7 +2,7 @@ import React from 'react'
 
 const EcologyCard = () => {
   return (
-    <div className="card ecology">
+    <div className="ecology-card">
       <p className="ecology big">
         Soit l’équivalent de
         <br />
