@@ -71,15 +71,34 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
     i = 0
     logger.info(f'we found {len(all_journeys)} inter urban journeys')
     # Then we call Navitia to get the beginning and the end of the journey
+    # Let's record all the query we need to send to Navitia, deduplicate them and call NAvitia only once
+    navitia_queries = list()
     for interurban_journey in all_journeys:
         interurban_journey.id = i
         i = i + 1
+        navitia_queries.append(tmw.query(0, geoloc_dep, interurban_journey.steps[0].departure_point, departure_date))
+        navitia_queries.append(tmw.query(0, interurban_journey.steps[-1].arrival_point, geoloc_arrival, departure_date))
+
+    # Call Navitia only once each time:
+    navitia_dict = {}
+    navitia_query_done = list()
+    for navitia_query in navitia_queries:
+        if navitia_query.to_json() in navitia_query_done:
+            # if query has been called then skip
+            continue
+        logger.info(f'call Navitia with {navitia_query.to_json()}')
+        navitia_steps = Navitia.navitia_query_directions(navitia_query)
+        navitia_dict[str(navitia_query.to_json())] = navitia_steps
+        navitia_query_done.append(navitia_query.to_json())
+        # navitia_dict_list.append(navitia_dict)
+
+    # Reconsiliate between navitia queries and interrurban journeys
+    for interurban_journey in all_journeys:
+        # Get start to station query
         start_to_station_query = tmw.query(0, geoloc_dep, interurban_journey.steps[0].departure_point, departure_date)
-        logger.info(f'start_to_station_query{start_to_station_query.to_json()}')
-        start_to_station_steps = Navitia.navitia_query_directions(start_to_station_query)
+        start_to_station_steps = navitia_dict[str(start_to_station_query.to_json())]
         station_to_arrival_query = tmw.query(0, interurban_journey.steps[-1].arrival_point, geoloc_arrival, departure_date)
-        logger.info(f'station_to_arrival_query{station_to_arrival_query.to_json()}')
-        station_to_arrival_steps = Navitia.navitia_query_directions(station_to_arrival_query)
+        station_to_arrival_steps = navitia_dict[str(station_to_arrival_query.to_json())]
         if (start_to_station_steps is not None) & (station_to_arrival_steps is not None):
             interurban_journey.add_steps(start_to_station_steps[0].steps, start_end=True)
             interurban_journey.add_steps(station_to_arrival_steps[0].steps, start_end=False)
