@@ -3,7 +3,7 @@ import React, { useState } from 'react'
 import { BrowserRouter as Router, Switch, Route } from 'react-router-dom'
 import Home from './Home'
 import ResultListContainer from './resultList/ResultListContainer'
-import DetailedResult from './resultList/DetailedResult'
+import DetailedResult from './detailedResult/DetailedResult'
 import './style/main.scss'
 import journey from '../fakeJourney'
 
@@ -23,7 +23,7 @@ const App = () => {
             render={({ match }) => {
               const selectedJourneyId = parseInt(match.params.journeyId, 10)
               const selectedJourney = results.find(result => result.id === selectedJourneyId)
-              return <DetailedResult result={selectedJourney} />
+              return <DetailedResult result={selectedJourney} results={results} />
             }}
           />
           <Route path="/" exact render={() => <Home setResults={setResults} />} />
