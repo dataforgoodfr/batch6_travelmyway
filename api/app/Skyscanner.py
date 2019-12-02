@@ -3,6 +3,7 @@ from loguru import logger
 import pandas as pd
 import copy
 import zipfile
+import os
 import io
 from app import TMW as tmw
 from datetime import datetime as dt
@@ -19,29 +20,33 @@ pd.set_option('display.width', 1000)
 _AIRPORT_WAITING_PERIOD = 7200
 
 
-def create_airport_database():
-    # Create an Airport Database to link a airport code to it's location
-    # get airport db from http://www.partow.net/downloads/GlobalAirportDatabase.zip
-    r = requests.get('http://www.partow.net/downloads/GlobalAirportDatabase.zip')
-    csv_buffer = io.BytesIO(r.content)
-    z = zipfile.ZipFile(csv_buffer)
-    with z:
-        with z.open("GlobalAirportDatabase.txt") as f:
-            airports = pd.read_csv(f, header=None, sep=':')
+def load_airport_database():
+    path = os.path.join(os.getcwd(), 'skyscanner_europe_airport_list.csv')  #
+    try:
+        logger.info(path)
+        airport_list = pd.read_csv(path)
+        airport_list['geoloc'] = airport_list.apply(lambda x: [x.latitude, x.longitude], axis=1)
+        logger.info('load the skyscanner airport db. Here is a random example :')
+        logger.info(airport_list.sample(1))
+        return airport_list
+    except:
+        try:
+            logger.info(os.path.join(os.getcwd(), 'api/app/', 'data/skyscanner_europe_airport_list.csv'))
+            airport_list = pd.read_csv(os.path.join(os.getcwd(), 'api/app/', 'data/skyscanner_europe_airport_list.csv'), sep=',')
+            airport_list['geoloc'] = airport_list.apply(lambda x: [x.latitude, x.longitude], axis=1)
+            logger.info('load the skyscanner airport db. Here is a random example :')
+            logger.info(airport_list.sample(1))
+            return airport_list
+        except:
+            logger.info(os.path.join(os.getcwd(), 'app/', 'data/skyscanner_europe_airport_list.csv'))
+            airport_list = pd.read_csv(os.path.join(os.getcwd(), 'app/', 'data/skyscanner_europe_airport_list.csv'))
+            airport_list['geoloc'] = airport_list.apply(lambda x: [x.latitude, x.longitude], axis=1)
+            logger.info('load the skyscanner airport db. Here is a random example :')
+            logger.info(airport_list.sample(1))
+            return airport_list
 
-    airports = airports.rename(columns={1: 'Code', 2: 'AirportName', 3: 'City', 4: 'Country', 14: 'latitude',
-                                        15: 'longitude'})
-    airports = airports[['Code', 'AirportName', 'City', 'Country', 'latitude', 'longitude']]
-    # Filter airports with no Code (not very useful)
-    airports = airports[~pd.isna(airports.Code)]
-    airports['geoloc'] = airports.apply(lambda x: [x.latitude,x.longitude], axis=1)
-    airports['Code_sky'] = airports.apply(lambda x: x.Code + '-sky', axis=1)
 
-    logger.info(f'found {airports.shape[0]} airports, here is an example: \n {airports[airports.latitude!=0.0].sample()} ')
-    return airports
-
-
-_AIRPORT_DF = create_airport_database()
+_AIRPORT_DF = load_airport_database()
 
 
 def skyscanner_query_directions(query):
@@ -55,6 +60,7 @@ def skyscanner_query_directions(query):
     date_departure = query['query']['datetime']
     df_response = get_planes_from_skyscanner(date_departure, None, departure_point, arrival_point, details=True)
     if df_response is None or df_response.empty:
+        print('on a rien trouve comme avion')
         return list()
     else:
         return skyscanner_journeys(df_response)
@@ -66,6 +72,7 @@ def skyscanner_journeys(df_response, _id=0):
     # Compute distance for each leg
     df_response['distance_step'] = df_response.apply(lambda x: distance(x.geoloc_origin_seg,
                                                                         x.geoloc_destination_seg).m, axis=1)
+    print(df_response.itinerary_id.nunique())
     lst_journeys = list()
     # all itineraries :
     for itinerary_id in df_response.itinerary_id.unique():
@@ -168,6 +175,7 @@ def get_price_from_itineraries(x):
 
 def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, details=False, try_number=1):
     url = "https://skyscanner-skyscanner-flight-search-v1.p.rapidapi.com/apiservices/pricing/v1.0"
+    logger.info(f'get_planes try nb {try_number}')
     one_way = date_return is None
     if one_way:
         payload = f'cabinClass=economy&children=0&infants=0&country=FR&currency=EUR&locale=en-US&originPlace={departure}&destinationPlace={arrival}&outboundDate={date_departure}&adults=1'
@@ -186,20 +194,24 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
     try:
         # print(response.headers)
         key = response.headers['Location'].split('/')[-1]
-    except KeyError:
+    except :
         # Retry calling API 3 times
         try:
             # Is there an error with the query ?
             error = response.json()['ValidationErrors']
             logger.warning(error)
+            if (error[0]['Message'] == 'Rate limit has been exceeded: 400 PerMinute for PricingSession')&(try_number<4):
+                time.sleep(1)
+                logger.info(f'we try our luck for chance {try_number + 1} out of 3 with Skyscanner')
+                return get_planes_from_skyscanner(date_departure, date_return, departure, arrival,
+                                           details=True, try_number=try_number + 1)
+            else:
+                # we couldn't find any trips through the API
+                logger.info(f'out because {error}')
+                return pd.DataFrame()
+        except:
+            logger.warning('The Skyscanner API returned an unknown error')
             return pd.DataFrame()
-        except KeyError:
-            if try_number < 3:
-                time.sleep(2)
-                get_planes_from_skyscanner(date_departure, date_return, departure, arrival,
-                                           details=False, try_number=try_number+1)
-            else :
-                raise KeyError('The API did not allow for session creation 3 times in a row')
     url = 'https://skyscanner-skyscanner-flight-search-v1.p.rapidapi.com/apiservices/pricing/uk2/v1.0/' + key
     querystring = {"pageIndex": "0", "pageSize": "100"}
 
@@ -215,12 +227,18 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
         while response.json()['Status'] != 'UpdatesComplete':
             response = requests.request("GET", url, headers=headers, params=querystring)
     except:
+        if response.status_code == 200:
+            logger.info('out because chai po')
+            logger.info(response.json()['Status'])
+            logger.info(response.json()['Legs'])
         return pd.DataFrame()
-    # print('le statut de la reponse est ' + response.json()['Status'])
-        if len(response.json()['Legs']) > 0:
-            return format_skyscanner_response(response.json(), one_way, details)
+
+    if len(response.json()['Legs']) > 0:
+        return format_skyscanner_response(response.json(), one_way, details)
     else :
         # print(f'no flight found lets move on {response}')
+        logger.info('out because no legs. Looked like this though')
+        logger.info(response.json())
         return pd.DataFrame()
 
 
@@ -229,11 +247,12 @@ def format_skyscanner_response(rep_json, one_way=False, segment_details=True, on
     Format complicated json with information flighing around into a clear dataframe
     See Skyscanner API doc for more info https://skyscanner.github.io/slate/?_ga=1.104705984.172843296.1446781555#polling-the-results
     """
+    logger.info('into format planes')
     # get legs (aggregated outbound or inbound trip)
     legs = pd.DataFrame.from_dict(rep_json['Legs'])
     # get itineraries (vector of 2 legs with the total price and price info)
     itineraries = pd.DataFrame.from_dict(rep_json['Itineraries'])
-    # reset_index to get an unique id for each itinary
+    # reset_index to get an unique id for each itinerary
     itineraries.reset_index(inplace=True)
     itineraries = itineraries.rename(columns={'index': 'itinerary_id'})
 
@@ -310,8 +329,8 @@ def format_skyscanner_response(rep_json, one_way=False, segment_details=True, on
              'geoloc_destination', 'Duration_global',
              'Id_global', 'PriceTotal_AR', 'nb_segments', 'ArrivalDateTime', 'DepartureDateTime',
              'Duration_seg', 'JourneyMode_seg', 'Name_origin_seg', 'Name',
-             'Id', 'Code_origin_seg', 'geoloc_origin_seg', 'Code_destination_seg', 'geoloc_destination_seg',
-             'FlightNumber_rich']].drop_duplicates(subset='Id').sort_values(by=['itinerary_id', 'Id_global'])
+             'Id', 'Id_seg', 'Code_origin_seg', 'geoloc_origin_seg', 'Code_destination_seg', 'geoloc_destination_seg',
+             'FlightNumber_rich']].drop_duplicates(subset=['Id_seg', 'itinerary_id']).sort_values(by=['itinerary_id', 'DepartureDateTime'], ascending=[True,True])
 
 
 # Custom function to handle DF
@@ -364,10 +383,16 @@ def get_airports_from_geo_locs(geoloc_dep, geoloc_arrival):
     stops_tmp['distance_dep'] = stops_tmp.apply(lambda x: distance(geoloc_dep, x.geoloc).m, axis=1)
     stops_tmp['distance_arrival'] = stops_tmp.apply(lambda x: distance(geoloc_arrival, x.geoloc).m, axis=1)
 
-    # We get the 3 closest airports for departure and arrival
+    # We get the 2 closest airports for departure and arrival + 1 one if they are small
     airport_list = dict()
-    airport_list['departure'] = stops_tmp.sort_values(by='distance_dep').Code_sky.head(3).get_values()
-    airport_list['arrival'] = stops_tmp.sort_values(by='distance_arrival').Code_sky.head(3).get_values()
+    tmp_close_airports = stops_tmp.sort_values(by='distance_dep').head(2)
+    if tmp_close_airports[tmp_close_airports.bigger_city].shape[0]==0:
+        tmp_close_airports = stops_tmp.sort_values(by='distance_dep').head(3)
+    airport_list['departure'] = tmp_close_airports.city_sky.unique()
+    tmp_close_airports = stops_tmp.sort_values(by='distance_arrival').head(2)
+    if tmp_close_airports[tmp_close_airports.bigger_city].shape[0]==0:
+        tmp_close_airports = stops_tmp.sort_values(by='distance_arrival').head(3)
+    airport_list['arrival'] = tmp_close_airports.city_sky.unique()
     logger.info(f'airports {airport_list}')
     return airport_list
 
@@ -426,6 +451,74 @@ def main(query):
         all_reponses_json.append(journey_sky.to_json())
 
     return all_responses
+
+
+################# Recompute airport database (not run each time) ##############################@
+def recompute_airport_database():
+    airport_list_world = download_airport_database()
+    # Keep relevant europe airports
+    europe_countries = ['FRANCE', 'SPAIN', 'BELGIUM', 'GERMANY', 'ITALY', 'LUXEMBOURG', 'NORWAY', 'SWEDEN',
+                        'DENMARK', 'ENGLAND', 'IRELAND', 'SCOTLAND', 'SWITZERLAND', 'FINLAND', 'SLOVENIA',
+                        'AUSTRIA', 'POLAND', 'NETHERLANDS', 'PORTUGAL', 'CZECHIA', 'HUNGARY']
+
+    europe_airports = airport_list_world[airport_list_world.Country.isin(europe_countries)]
+    europe_airports = europe_airports[~pd.isna(europe_airports.Code)]
+    europe_airports['city_sky'] = europe_airports.apply(return_city, axis=1)
+    # to be completed manually
+    europe_airports['bigger_city'] = False
+    europe_airports_final = europe_airports[europe_airports.city_sky != 'not found']
+    europe_airports_final.to_csv('skyscanner_europe_airport_list.csv', index=False)
+    return True
+
+
+def get_place_from_airport(air_code):
+    url = "https://skyscanner-skyscanner-flight-search-v1.p.rapidapi.com/apiservices/autosuggest/v1.0/UK/GBP/en-GB/"
+
+    querystring = {"query": air_code, "pageIndex": "1", "pageSize": "100"}
+
+    headers = {
+        'x-rapidapi-host': "skyscanner-skyscanner-flight-search-v1.p.rapidapi.com",
+        'x-rapidapi-key': "c8568b20bdmsha7927470ad4afdbp13559djsn5c9a0c383cc2"
+    }
+
+    response = requests.request("GET", url, headers=headers, params=querystring)
+
+    tmp = pd.DataFrame.from_dict(response.json()['Places'])
+
+    return tmp
+
+
+def return_city(x):
+    tmp = get_place_from_airport(x.Code)
+    print(x.Code)
+    ff = tmp[tmp.PlaceId == x.Code + '-sky']
+    if not ff.empty:
+        # print(';n')
+        return ff.CityId.get_values()[0]
+    else:
+        return 'not found'
+
+
+def download_airport_database():
+    # Create an Airport Database to link a airport code to it's location
+    # get airport db from http://www.partow.net/downloads/GlobalAirportDatabase.zip
+    r = requests.get('http://www.partow.net/downloads/GlobalAirportDatabase.zip')
+    csv_buffer = io.BytesIO(r.content)
+    z = zipfile.ZipFile(csv_buffer)
+    with z:
+        with z.open("GlobalAirportDatabase.txt") as f:
+            airports = pd.read_csv(f, header=None, sep=':')
+
+    airports = airports.rename(columns={1: 'Code', 2: 'AirportName', 3: 'City', 4: 'Country', 14: 'latitude',
+                                        15: 'longitude'})
+    airports = airports[['Code', 'AirportName', 'City', 'Country', 'latitude', 'longitude']]
+    # Filter airports with no Code (not very useful)
+    airports = airports[~pd.isna(airports.Code)]
+    airports['geoloc'] = airports.apply(lambda x: [x.latitude,x.longitude], axis=1)
+    airports['Code_sky'] = airports.apply(lambda x: x.Code + '-sky', axis=1)
+
+    logger.info(f'found {airports.shape[0]} airports, here is an example: \n {airports[airports.latitude!=0.0].sample()} ')
+    return airports
 
 
 if __name__ == '__main__':

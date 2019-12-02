@@ -77,6 +77,7 @@ navitia_client = start_navitia_client()
 _NAVITIA_COV = get_navitia_coverage(navitia_client)
 logger.info(_NAVITIA_COV.head(1))
 
+
 def navitia_query_directions(query, _id=0):
     navitia_client = start_navitia_client()
     try:
@@ -190,9 +191,36 @@ def navitia_journeys_sections_type(json, _id=0):
         'street_network': navitia_journeys_sections_type_street_network,
         'waiting': navitia_journeys_sections_type_waiting,
         'transfer': navitia_journeys_sections_type_transfer,
+        'on_demand_transport': navitia_journeys_sections_type_on_demand,
     }
     func = switcher_journeys_sections_type.get(json['type'], "Invalid navitia type")
     step = func(json, _id)
+    return step
+
+
+def navitia_journeys_sections_type_on_demand(json, _id=0):
+    display_information = json['display_informations']
+    label = '{} {} / {} / direction: {}'.format(
+        display_information['physical_mode'],
+        display_information['code'],
+        display_information['name'],
+        display_information['direction'],
+    )
+    step = tmw.journey_step(_id,
+                            _type=display_information['network'].lower(),
+                            label=label,
+                            distance_m=json['geojson']['properties'][0]['length'],
+                            duration_s=json['duration'],
+                            price_EUR=[0],
+                            gCO2=json['co2_emission']['value'],
+                            departure_point=json['from']['name'],
+                            arrival_point=json['to']['name'],
+                            departure_stop_name=json['from']['name'],
+                            arrival_stop_name=json['to']['name'],
+                            departure_date=datetime.strptime(json['departure_date_time'], '%Y%m%dT%H%M%S'),
+                            arrival_date=datetime.strptime(json['arrival_date_time'], '%Y%m%dT%H%M%S'),
+                            geojson=json['geojson'],
+                            )
     return step
 
 
@@ -282,14 +310,14 @@ def navitia_journeys_sections_type_waiting(json, _id=0):
     step = tmw.journey_step(_id,
                             _type=constants.TYPE_WAIT,
                             label='wait',
-                            distance_m=json['geojson']['properties'][0]['length'],
+                            distance_m=0,
                             duration_s=json['duration'],
                             price_EUR=[0],
-                            gCO2=json['co2_emission']['value'],
-                            departure_point=json['from']['name'],
-                            arrival_point=json['to']['name'],
-                            departure_stop_name=json['from']['name'],
-                            arrival_stop_name=json['to']['name'],
+                            gCO2=0,
+                            departure_point=[0,0],
+                            arrival_point=[0,0],
+                            departure_stop_name='',
+                            arrival_stop_name='',
                             departure_date=datetime.strptime(json['departure_date_time'], '%Y%m%dT%H%M%S'),
                             arrival_date=datetime.strptime(json['arrival_date_time'], '%Y%m%dT%H%M%S'),
                             geojson='',

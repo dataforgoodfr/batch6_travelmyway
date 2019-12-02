@@ -261,7 +261,6 @@ def trainline_journeys(df_response, _id=0):
         category_journey = list()
         for step in journey_train.steps:
             if step.type not in [constants.TYPE_TRANSFER, constants.TYPE_WAIT]:
-                logger.info('add category')
                 category_journey.append(step.type)
 
         journey_train.category = list(set(category_journey))
