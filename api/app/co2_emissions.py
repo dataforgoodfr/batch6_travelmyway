@@ -83,3 +83,4 @@ def calculate_co2_emissions(type_transport, type_city, fuel, nb_seats, nb_km):
         index_db = index_db & select_nb_km_max
 
     return carbon_db.loc[index_db, 'value'].values[0]
+
