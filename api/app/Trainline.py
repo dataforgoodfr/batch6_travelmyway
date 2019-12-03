@@ -170,7 +170,7 @@ def format_trainline_response(rep_json, segment_details=True, only_sellable=True
 
 def trainline_journeys(df_response, _id=0):
     # affect a price to each leg
-    df_response['price_step'] = df_response.cents / 100
+    df_response['price_step'] = df_response.cents / (df_response.nb_segments*100)
 
     # Compute distance for each leg
     # print(df_response.columns)
