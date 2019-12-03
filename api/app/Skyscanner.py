@@ -6,7 +6,7 @@ import zipfile
 import os
 import io
 from app import TMW as tmw
-from datetime import datetime as dt
+from datetime import datetime as dt, timedelta
 from geopy.distance import distance
 from app import tmw_api_keys
 import time
@@ -17,7 +17,7 @@ pd.set_option('display.max_columns', 999)
 pd.set_option('display.width', 1000)
 
 # Define the (arbitrary waiting period at the airport
-_AIRPORT_WAITING_PERIOD = 7200
+_AIRPORT_WAITING_PERIOD = constants.WAITING_PERIOD_AIRPORT
 
 
 def load_airport_database():
@@ -69,6 +69,8 @@ def skyscanner_query_directions(query):
 def skyscanner_journeys(df_response, _id=0):
     # affect a price to each leg
     df_response['price_step'] = df_response.PriceTotal_AR / df_response.nb_segments
+    df_response['DepartureDateTime'] = pd.to_datetime(df_response['DepartureDateTime'])
+    df_response['ArrivalDateTime'] = pd.to_datetime(df_response['ArrivalDateTime'])
     # Compute distance for each leg
     df_response['distance_step'] = df_response.apply(lambda x: distance(x.geoloc_origin_seg,
                                                                         x.geoloc_destination_seg).m, axis=1)
@@ -93,6 +95,8 @@ def skyscanner_journeys(df_response, _id=0):
                                 gCO2=0,
                                 departure_point=itinerary.geoloc.iloc[0],
                                 arrival_point=itinerary.geoloc.iloc[0],
+                                departure_date=itinerary.DepartureDateTime[0] - timedelta(seconds=_AIRPORT_WAITING_PERIOD),
+                                arrival_date=itinerary.DepartureDateTime[0],
                                 geojson=[],
                                 )
         lst_sections.append(step)
@@ -125,13 +129,13 @@ def skyscanner_journeys(df_response, _id=0):
             i = i+1
             # add transfer steps
             if not pd.isna(leg.next_departure):
-                duration = dt.strptime(leg['next_departure'], '%Y-%m-%dT%H:%M:%S') - \
-                           dt.strptime(leg['ArrivalDateTime'], '%Y-%m-%dT%H:%M:%S')
+                #duration = dt.strptime(leg['next_departure'], '%Y-%m-%dT%H:%M:%S') - \
+                #           dt.strptime(leg['ArrivalDateTime'], '%Y-%m-%dT%H:%M:%S')
                 step = tmw.journey_step(i,
                                         _type=constants.TYPE_TRANSFER,
                                         label='',
                                         distance_m=0,
-                                        duration_s=duration.seconds,
+                                        duration_s=(leg.next_departure - leg.ArrivalDateTime).seconds,
                                         price_EUR=[0],
                                         departure_point=leg.geoloc_destination_seg,
                                         arrival_point=leg.next_geoloc,
@@ -145,7 +149,10 @@ def skyscanner_journeys(df_response, _id=0):
                 lst_sections.append(step)
                 i = i+1
 
-        journey_sky = tmw.journey(_id, steps=lst_sections)
+        journey_sky = tmw.journey(_id, steps=lst_sections,
+                                    departure_date= lst_sections[0].departure_date,
+                                    arrival_date= lst_sections[-1].arrival_date)
+        # journey_sky = tmw.journey(_id, steps=lst_sections)
         # Add category
         category_journey = list()
         for step in journey_sky.steps:

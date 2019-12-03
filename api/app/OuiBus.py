@@ -1,7 +1,7 @@
 import requests
 import pandas as pd
 import json
-from datetime import datetime as dt
+from datetime import datetime as dt, timedelta
 import copy
 from loguru import logger
 from geopy.distance import distance
@@ -205,6 +205,8 @@ def ouibus_journeys(df_response, _id=0):
                                 gCO2=0,
                                 departure_point=itinerary.geoloc.iloc[0],
                                 arrival_point=itinerary.geoloc.iloc[0],
+                                departure_date=itinerary.departure_seg[0] - timedelta(seconds=_STATION_WAITING_PERIOD),
+                                arrival_date=itinerary.departure_seg[0],
                                 geojson=[],
                                 )
         lst_sections.append(step)

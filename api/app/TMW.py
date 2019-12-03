@@ -6,7 +6,7 @@ import folium
 
 
 class journey:
-    def __init__(self, _id, steps=[]):
+    def __init__(self, _id, departure_date=dt.now(), arrival_date=dt.now(), steps=[]):
         self.id = _id
         self.category = '' # car/train/plane
         self.label = []
@@ -18,8 +18,8 @@ class journey:
         self.total_gCO2 = 0
         self.departure_point = [0, 0]
         self.arrival_point = [0, 0]
-        self.departure_date = dt.now()
-        self.arrival_date  = dt.now()
+        self.departure_date = departure_date
+        self.arrival_date  = arrival_date
         self.steps = steps
 
     def add(self, steps=[]):

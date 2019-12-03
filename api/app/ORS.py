@@ -2,7 +2,7 @@ import openrouteservice
 from openrouteservice import convert
 from app import constants
 from app import tmw_api_keys
-from datetime import timedelta
+from datetime import timedelta, datetime as dt
 from app import TMW as tmw
 from app import co2_emissions
 
@@ -77,8 +77,14 @@ def ORS_query_directions(query, profile='driving-car', toll_price=True, _id=0, g
             category_journey.append(step.type)
 
     ors_journey.category = list(set(category_journey))
+    ors_journey.update()
+    try:
+        ors_journey.departure_date = dt.strptime(query.departure_date, '%Y-%m-%dT%H:%M:%S')
+    except:
+        ors_journey.departure_date = dt.strptime(query.departure_date, '%Y-%m-%d')
+    ors_journey.arrival_date = ors_journey.departure_date + timedelta(seconds=ors_journey.total_duration)
 
-    return ors_journey.update()
+    return ors_journey
 
 def ORS_gas_price(distance_m, gas_price_EUR=1.5, car_consumption=0.0664):
     distance_km = distance_m / 1000

@@ -6,7 +6,7 @@ import copy
 import json
 import io
 from app import TMW as tmw
-from datetime import datetime as dt
+from datetime import datetime as dt, timedelta
 from geopy.distance import distance
 from app import constants
 from app import co2_emissions
@@ -170,7 +170,7 @@ def format_trainline_response(rep_json, segment_details=True, only_sellable=True
 
 def trainline_journeys(df_response, _id=0):
     # affect a price to each leg
-    df_response['price_step'] = df_response.cents / 100
+    df_response['price_step'] = df_response.cents / (df_response.nb_segments*100)
 
     # Compute distance for each leg
     # print(df_response.columns)
@@ -204,6 +204,8 @@ def trainline_journeys(df_response, _id=0):
                                 gCO2=0,
                                 departure_point=[itinerary.latitude.iloc[0], itinerary.longitude.iloc[0]],
                                 arrival_point=[itinerary.latitude.iloc[0], itinerary.longitude.iloc[0]],
+                                departure_date=itinerary.departure_date_seg[0] - timedelta(seconds=_STATION_WAITING_PERIOD),
+                                arrival_date=itinerary.departure_date_seg[0],
                                 geojson=[],
                                 )
 
@@ -255,8 +257,9 @@ def trainline_journeys(df_response, _id=0):
                 lst_sections.append(step)
                 i = i + 1
 
-        journey_train = tmw.journey(_id,
-                                  steps=lst_sections)
+        journey_train = tmw.journey(_id, steps=lst_sections,
+                                    departure_date= lst_sections[0].departure_date,
+                                    arrival_date= lst_sections[-1].arrival_date)
         # Add category
         category_journey = list()
         for step in journey_train.steps:
