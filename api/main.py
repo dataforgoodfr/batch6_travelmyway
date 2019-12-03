@@ -1,6 +1,6 @@
 import flask
 from flask import request
-from flask import json
+from flask import jsonify
 from flask_json import json_response
 from app import main
 from loguru import logger
@@ -70,8 +70,8 @@ def compute_journey():
         return "<h1>KO</h1><p>geoloc format not recognized</p>"
     try:
         #result = json.dumps(generate_fake_journey())
-        result = json.dumps(main.compute_complete_journey(date_time, start, end))
-        return result, 200
+        result = main.compute_complete_journey(date_time, start, end)
+        return jsonify(result), 200
     except Exception:
         return "Server error", 500
 
@@ -96,9 +96,11 @@ def compute_fake_journey():
     except:
         return "<h1>KO</h1><p>geoloc format not recognized</p>"
     try:
-        result = json.dumps(generate_fake_journey())
+        # result = json.dumps(generate_fake_journey())
+        result = generate_fake_journey()
         # logger.info(result)
-        return json_response(status_=200, data_=result)
+        return jsonify(result), 200
+        # return json_response(status_=200, data_=result)
     except Exception:
         return "Server error", 500
 
