@@ -4,6 +4,7 @@ from flask import jsonify
 from flask_json import json_response
 from app import main
 from loguru import logger
+import json
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
@@ -71,7 +72,12 @@ def compute_journey():
     try:
         #result = json.dumps(generate_fake_journey())
         result = main.compute_complete_journey(date_time, start, end)
-        return jsonify(result), 200
+        js = json.dumps(result)
+        logger.info(js)
+        resp = flask.Response(js, status=200, mimetype='application/json')
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+
+        return resp
     except Exception:
         return "Server error", 500
 
@@ -81,6 +87,9 @@ def compute_fake_journey():
     start = request.args.get('from')
     end = request.args.get('to')
     date_time = request.args.get('start')
+    result = generate_fake_journey()
+    logger.info('result')
+    logger.info(result)
     if start is None or end is None or date_time is None:
         return "<h1>KO</h1><p>Missing mandatory parameters</p>", 500
     logger.info(f'end {end}, start {start} date {date_time}')
@@ -98,11 +107,28 @@ def compute_fake_journey():
     try:
         # result = json.dumps(generate_fake_journey())
         result = generate_fake_journey()
+        logger.info(result)
+        js = json.dumps(result)
+        resp = flask.Response(js, status=200, mimetype='application/json')
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        return resp
         # logger.info(result)
-        return jsonify(result), 200
+        #return response
         # return json_response(status_=200, data_=result)
     except Exception:
         return "Server error", 500
+
+
+@app.route('/hello', methods = ['GET'])
+def api_hello():
+    result = generate_fake_journey()
+    logger.info(result)
+    js = json.dumps(result)
+    logger.info(js)
+    resp = flask.Response(js, status=200, mimetype='application/json')
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+
+    return resp
 
 
 @app.errorhandler(404)
