@@ -24,6 +24,9 @@ html {
   }
 }
 
+.center {
+  text-align: center;
+}
 .right {
   text-align: right;
 }
@@ -43,6 +46,7 @@ p {
 .text-info {
   color: $info-color;
   font-family: $primary-font;
+  font-weight: 300;
   &.small {
     font-size: 14px;
   }
@@ -53,8 +57,6 @@ p {
 
 .ecology {
   color: $green;
-  &.info {
-  }
   &.big {
     font-size: 18px;
     margin-bottom: 0;
@@ -76,7 +78,12 @@ h3 {
 }
 
 button {
+  padding: 14px 87px;
+  border: none;
+  border-radius: 3px;
+  white-space: nowrap;
   &.primary {
-    color: $red;
+    background-color: $red;
+    color: white;
   }
 }

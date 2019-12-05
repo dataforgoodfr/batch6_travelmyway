@@ -1,0 +1,12 @@
+.search-recap {
+  display: 'flex';
+  flex-direction: 'row';
+  height: auto;
+  padding: 15px 30px;
+  background-color: white;
+  margin-bottom: 36px;
+
+  span {
+    margin: 0 3px 0 24px;
+  }
+}
