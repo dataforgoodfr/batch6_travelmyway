@@ -1,0 +1,22 @@
+.small-result-card {
+  margin: 0 auto;
+  color: white;
+  background-color: white;
+  font-weight: 300;
+  border-radius: 0px 0px 10px 10px;
+  margin-bottom: 25px;
+  box-shadow: 0px 6px 40px rgba(41, 52, 98, 0.05);
+  .header {
+    display: flex;
+    justify-content: space-between;
+    border-radius: 10px 10px 0px 0px;
+    padding: 5px 24px;
+    background-color: $primary-color;
+    p {
+      color: white;
+    }
+  }
+  .content {
+    padding: 18px 24px 10px 24px;
+  }
+}
