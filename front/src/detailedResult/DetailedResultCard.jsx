@@ -34,7 +34,9 @@ const DetailedResultCard = ({ selectedJourney }) => {
                 <p className="text-info">prix total</p>
               </div>
               <div>
-                <button className="primary">Aller sur trainline.fr</button>
+                <a className="button primary" href="https://www.trainline.fr/" target="_blank">
+                  Aller sur trainline.fr
+                </a>
                 <p className="text-info center">Pour réserver le billet de train</p>
               </div>
             </div>

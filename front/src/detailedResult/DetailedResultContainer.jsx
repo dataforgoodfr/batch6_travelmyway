@@ -2,7 +2,7 @@ import React from 'react'
 import Header from '../components/Header'
 import { Link } from 'react-router-dom'
 import DetailedResultCard from './DetailedResultCard'
-import ResultCard from '../resultList/ResultCard'
+import SmallResultCard from './SmallResultCard'
 import EcologyCard from './EcologyCard'
 import StepsCard from './StepsCard'
 import SearchBarRecap from './SearchBarRecap'
@@ -11,8 +11,6 @@ import { getCO2InKg } from '../journey.utils'
 
 const DetailedResultContainer = ({ selectedJourney, results }) => {
   const totalCO2InKg = getCO2InKg(selectedJourney.total_gCO2)
-  console.log('result', selectedJourney)
-  console.log('results', results)
   return (
     <div className="page-detailed-results">
       <Header />
@@ -32,12 +30,15 @@ const DetailedResultContainer = ({ selectedJourney, results }) => {
               <h3 className="ecology">{totalCO2InKg} de CO2 émis</h3>
               <EcologyCard />
               <p>Les autres trajets écologiques</p>
+              <br />
               {results.map(item => (
                 <Link key={item.id} to={`/results/${item.id}`}>
-                  <ResultCard result={item} />
+                  <SmallResultCard result={item} />
                 </Link>
               ))}
-              <Link to="/results">Voir toutes les options ></Link>
+              <Link to="/results" className="center">
+                Voir toutes les options >
+              </Link>
             </Grid.Column>
           </Grid.Row>
         </Grid>

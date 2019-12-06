@@ -2,7 +2,6 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 
 const SearchBarRecap = selectedJourney => {
-  console.log('journey', selectedJourney)
   return (
     <div className="search-recap">
       <p>
@@ -14,7 +13,9 @@ const SearchBarRecap = selectedJourney => {
         <span className="text-info">à </span> Helenenstraße 14, 50667 Köln, Allemagne
         <span className="text-info">le</span>mer. 17 oct. 6h
         <span>
-          <Link className="text-info">✎ modifier</Link>
+          <Link className="text-info" to="/">
+            ✎ modifier
+          </Link>
         </span>
       </p>
     </div>
