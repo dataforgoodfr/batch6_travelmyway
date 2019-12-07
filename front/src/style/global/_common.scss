@@ -19,17 +19,31 @@ html {
     width: 100%;
   }
 
+  &.align-center {
+    align-items: center;
+  }
+
   .inline-flex {
     display: inline-flex;
   }
 }
 
+.center {
+  text-align: center;
+}
 .right {
   text-align: right;
 }
 
+.no-wrap {
+  white-space: nowrap;
+}
 p {
   margin: 0;
+  color: $primary-color;
+  &.bold {
+    font-weight: bold;
+  }
 }
 
 .text-large {
@@ -43,6 +57,7 @@ p {
 .text-info {
   color: $info-color;
   font-family: $primary-font;
+  font-weight: 300;
   &.small {
     font-size: 14px;
   }
@@ -53,8 +68,6 @@ p {
 
 .ecology {
   color: $green;
-  &.info {
-  }
   &.big {
     font-size: 18px;
     margin-bottom: 0;
@@ -75,8 +88,23 @@ h3 {
   font-family: $secondary-font;
 }
 
-button {
+.red {
+  color: $red;
+}
+
+.button {
+  text-decoration: none;
+  border: none;
+  padding: 14px 87px;
+  border: none;
+  border-radius: 3px;
+  white-space: nowrap;
   &.primary {
-    color: $red;
+    background-color: $red;
+    color: white;
   }
+}
+
+.button + p {
+  margin-top: 20px;
 }

@@ -2,40 +2,43 @@ import React from 'react'
 import Header from '../components/Header'
 import { Link } from 'react-router-dom'
 import DetailedResultCard from './DetailedResultCard'
-import ResultCard from '../resultList/ResultCard'
+import SmallResultCard from './SmallResultCard'
 import EcologyCard from './EcologyCard'
 import StepsCard from './StepsCard'
-import SearchRecap from '../search/SearchRecap'
+import SearchBarRecap from './SearchBarRecap'
 import { Grid } from 'semantic-ui-react'
 import { getCO2InKg } from '../journey.utils'
 
-const DetailedResult = ({ result, results }) => {
-  const totalCO2InKg = getCO2InKg(result.total_gCO2)
+const DetailedResultContainer = ({ selectedJourney, results }) => {
+  const totalCO2InKg = getCO2InKg(selectedJourney.total_gCO2)
   return (
-    <div className="page-results">
+    <div className="page-detailed-results">
       <Header />
-      <SearchRecap></SearchRecap>
+      <SearchBarRecap />
       <main className="content-wrapper">
         <Grid>
           <Grid.Row>
             <Grid.Column>
-              <DetailedResultCard result={result} />
+              <DetailedResultCard selectedJourney={selectedJourney} />
             </Grid.Column>
           </Grid.Row>
           <Grid.Row>
             <Grid.Column width={8}>
-              <StepsCard steps={result.journey_steps} />
+              <StepsCard steps={selectedJourney.journey_steps} />
             </Grid.Column>
             <Grid.Column width={8}>
               <h3 className="ecology">{totalCO2InKg} de CO2 émis</h3>
               <EcologyCard />
               <p>Les autres trajets écologiques</p>
-              {results.map(result => (
-                <Link key={result.id} to={`/results/${result.id}`}>
-                  <ResultCard result={result} />
+              <br />
+              {results.map(item => (
+                <Link key={item.id} to={`/results/${item.id}`}>
+                  <SmallResultCard result={item} />
                 </Link>
               ))}
-              <Link to="/results">Voir toutes les options ></Link>
+              <Link to="/results" className="center">
+                Voir toutes les options >
+              </Link>
             </Grid.Column>
           </Grid.Row>
         </Grid>
@@ -44,4 +47,4 @@ const DetailedResult = ({ result, results }) => {
   )
 }
 
-export default DetailedResult
+export default DetailedResultContainer

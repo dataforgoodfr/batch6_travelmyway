@@ -9,3 +9,11 @@ export const getDurationFromSeconds = secs => {
 }
 
 export const getCO2InKg = CO2InG => `${Math.round((CO2InG / 1000) * 100) / 100} kg`
+
+export const journeyType = {
+  Walking: 'directions_walking',
+  Coach: 'directions_bus',
+  ratp: 'subway',
+  tisséo: 'face',
+  Waiting: 'airline_seat_recline_normal'
+}

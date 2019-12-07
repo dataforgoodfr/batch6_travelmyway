@@ -2,11 +2,11 @@ import React from 'react'
 import { Grid, Button } from 'semantic-ui-react'
 import { getDurationFromSeconds, getTimeFromDate } from '../journey.utils'
 
-const DetailedResultCard = ({ result }) => {
-  const departureHour = getTimeFromDate(result.departure_date)
-  const arrivalHour = getTimeFromDate(result.arrival_date)
-  const totalPrice = `${result.total_price_EUR} €`
-  const totalDuration = getDurationFromSeconds(result.total_duration)
+const DetailedResultCard = ({ selectedJourney }) => {
+  const departureHour = getTimeFromDate(selectedJourney.departure_date)
+  const arrivalHour = getTimeFromDate(selectedJourney.arrival_date)
+  const totalPrice = `${selectedJourney.total_price_EUR} €`
+  const totalDuration = getDurationFromSeconds(selectedJourney.total_duration)
   return (
     <div className="detailed-result-card">
       <Grid>
@@ -27,15 +27,17 @@ const DetailedResultCard = ({ result }) => {
               </div>
             </div>
           </Grid.Column>
-          <Grid.Column width={6} floated="right">
+          <Grid.Column width={8} floated="right">
             <div className="flex space-between">
               <div>
                 <p className="text-large">{totalPrice}</p>
-                <p className="text-info">tarif total</p>
+                <p className="text-info">prix total</p>
               </div>
               <div>
-                <Button>Aller sur trainline.fr</Button>
-                <p className="text-info">Pour réserver le billet de train</p>
+                <a className="button primary" href="https://www.trainline.fr/" target="_blank">
+                  Aller sur trainline.fr
+                </a>
+                <p className="text-info center">Pour réserver le billet de train</p>
               </div>
             </div>
           </Grid.Column>

@@ -8,6 +8,7 @@
 // BLOCS
 @import './blocs/home';
 @import './blocs/_results';
+@import './blocs/_detailedResults';
 
 //COMPONENTS
 @import './components/navbar';
@@ -16,5 +17,7 @@
 @import './components/ecologyCard';
 @import './components/stepsCard';
 @import './components/detailedResultCard';
+@import './components/searchBarRecap';
+@import './components/smallResultCard';
 
 @import '~react-datepicker/dist/react-datepicker.css';
