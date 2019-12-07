@@ -72,7 +72,7 @@ def start_navitia_client():
     navitia_client = Client(user=navitia_api_key)
     return navitia_client
 
-
+# ATTENTION: C'est quoi ce bout de code. Pas très propre... Doit être dans le main.py?
 navitia_client = start_navitia_client()
 _NAVITIA_COV = get_navitia_coverage(navitia_client)
 logger.info(_NAVITIA_COV.head(1))
@@ -99,6 +99,7 @@ def navitia_query_directions(query, _id=0):
     step = navitia_client.raw(url, multipage=False)
     if step.status_code == 200:
         return navitia_journeys(step.json())
+        #return step.json()
 
     else:
         logger.warning(f'ERROR {step.status_code} from Navitia')
@@ -177,11 +178,11 @@ def navitia_journeys(json, _id=0):
             try:
                 lst_sections.append(navitia_journeys_sections_type(section, _id=i))
             except:
-                logger.warning('NAvitia ERROR : ')
+                logger.warning('Navitia ERROR : ')
                 logger.warning('id: {}'.format(i))
                 logger.warning(section)
             i = i + 1
-        lst_journeys.append(tmw.journey(_id, lst_sections))
+        lst_journeys.append(tmw.journey(_id, steps=lst_sections))
     return lst_journeys
 
 
@@ -233,7 +234,7 @@ def navitia_journeys_sections_type_public_transport(json, _id=0):
         display_information['direction'],
     )
     step = tmw.journey_step(_id,
-                            _type=display_information['network'].lower(),
+                            _type=display_information['commercial_mode'].lower(),
                             label=label,
                             distance_m=json['geojson']['properties'][0]['length'],
                             duration_s=json['duration'],
