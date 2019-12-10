@@ -5,6 +5,7 @@ import copy
 import zipfile
 import os
 import io
+from time import perf_counter
 from app import TMW as tmw
 from datetime import datetime as dt, timedelta
 from geopy.distance import distance
@@ -12,6 +13,7 @@ from app import tmw_api_keys
 import time
 from app import constants
 from app.co2_emissions import calculate_co2_emissions
+
 
 pd.set_option('display.max_columns', 999)
 pd.set_option('display.width', 1000)
@@ -49,7 +51,7 @@ def load_airport_database():
 _AIRPORT_DF = load_airport_database()
 
 
-def skyscanner_query_directions(query):
+def skyscanner_query_directions(query, plane_jouney_found=True):
     # extract departure and arrival points
     logger.info(query['query']['start']['coord'])
     # departure_points = ';'.join(query['query']['start']['coord'])
@@ -58,7 +60,7 @@ def skyscanner_query_directions(query):
     arrival_point = query['query']['to']['coord']
     # extract departure date
     date_departure = query['query']['datetime']
-    df_response = get_planes_from_skyscanner(date_departure, None, departure_point, arrival_point, details=True)
+    df_response = get_planes_from_skyscanner(date_departure, None, departure_point, arrival_point, plane_jouney_found, details=True)
     if df_response is None or df_response.empty:
         print('on a rien trouve comme avion')
         return list()
@@ -180,10 +182,14 @@ def get_price_from_itineraries(x):
         return min(prices)
 
 
-def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, details=False, try_number=1):
+def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, plane_jouney_found=True, details=False, try_number=1):
     url = "https://skyscanner-skyscanner-flight-search-v1.p.rapidapi.com/apiservices/pricing/v1.0"
     logger.info(f'get_planes try nb {try_number}')
     one_way = date_return is None
+    if plane_jouney_found:
+        max_retries = 2
+    else :
+        max_retries = 5
     if one_way:
         payload = f'cabinClass=economy&children=0&infants=0&country=FR&currency=EUR&locale=en-US&originPlace={departure}&destinationPlace={arrival}&outboundDate={date_departure}&adults=1'
     else:
@@ -207,7 +213,7 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
             # Is there an error with the query ?
             error = response.json()['ValidationErrors']
             logger.warning(error)
-            if (error[0]['Message'] == 'Rate limit has been exceeded: 400 PerMinute for PricingSession')&(try_number<4):
+            if (error[0]['Message'] == 'Rate limit has been exceeded: 400 PerMinute for PricingSession')&(try_number < max_retries):
                 time.sleep(1)
                 logger.info(f'we try our luck for chance {try_number + 1} out of 3 with Skyscanner')
                 return get_planes_from_skyscanner(date_departure, date_return, departure, arrival,
@@ -217,6 +223,11 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
                 logger.info(f'out because {error}')
                 return pd.DataFrame()
         except:
+            if (response.status_code == 429) & (try_number < max_retries):
+                time.sleep(1.5)
+                return get_planes_from_skyscanner(date_departure, date_return, departure, arrival,
+                                                  details=True, try_number=try_number+1)
+
             logger.warning('The Skyscanner API returned an unknown error')
             return pd.DataFrame()
     url = 'https://skyscanner-skyscanner-flight-search-v1.p.rapidapi.com/apiservices/pricing/uk2/v1.0/' + key
@@ -230,22 +241,32 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
     response = requests.request("GET", url, headers=headers, params=querystring)
     logger.info(response.status_code)
     # logger.info(response.content)
+    waiting_start_time = perf_counter()
+    waiting_time = perf_counter()
     try:
-        while response.json()['Status'] != 'UpdatesComplete':
+        while ((response.status_code == 429) or (response.json()['Status'] != 'UpdatesComplete')) &\
+                (waiting_time-waiting_start_time < 5):
             response = requests.request("GET", url, headers=headers, params=querystring)
+            if response.status_code == 429:
+                time.sleep(1)
+            waiting_time = perf_counter()
     except:
+        if response.status_code == 429:
+            logger.info('weirdosse')
         if response.status_code == 200:
             logger.info('out because chai po')
             logger.info(response.json()['Status'])
             logger.info(response.json()['Legs'])
         return pd.DataFrame()
 
-    if len(response.json()['Legs']) > 0:
-        return format_skyscanner_response(response.json(), one_way, details)
-    else :
-        # print(f'no flight found lets move on {response}')
-        logger.info('out because no legs. Looked like this though')
-        logger.info(response.json())
+    try :
+        if len(response.json()['Legs']) > 0:
+            return format_skyscanner_response(response.json(), one_way, details)
+        else :
+            # print(f'no flight found lets move on {response}')
+            logger.info('out because no legs. Looked like this though')
+            logger.info(response.json())
+    except:
         return pd.DataFrame()
 
 
@@ -392,13 +413,17 @@ def get_airports_from_geo_locs(geoloc_dep, geoloc_arrival):
 
     # We get the 2 closest airports for departure and arrival + 1 one if they are small
     airport_list = dict()
-    tmp_close_airports = stops_tmp.sort_values(by='distance_dep').head(2)
-    if tmp_close_airports[tmp_close_airports.bigger_city].shape[0]==0:
-        tmp_close_airports = stops_tmp.sort_values(by='distance_dep').head(3)
+    tmp_close_airports = stops_tmp.sort_values(by='distance_dep').head(1)
+    if tmp_close_airports[tmp_close_airports.bigger_city].shape[0] == 0:
+        tmp_close_airports = stops_tmp.sort_values(by='distance_dep').head(2)
+        if tmp_close_airports[tmp_close_airports.bigger_city].shape[0] == 0:
+            tmp_close_airports = stops_tmp.sort_values(by='distance_dep').head(3)
     airport_list['departure'] = tmp_close_airports.city_sky.unique()
-    tmp_close_airports = stops_tmp.sort_values(by='distance_arrival').head(2)
+    tmp_close_airports = stops_tmp.sort_values(by='distance_arrival').head(1)
     if tmp_close_airports[tmp_close_airports.bigger_city].shape[0]==0:
-        tmp_close_airports = stops_tmp.sort_values(by='distance_arrival').head(3)
+        tmp_close_airports = stops_tmp.sort_values(by='distance_arrival').head(2)
+        if tmp_close_airports[tmp_close_airports.bigger_city].shape[0] == 0:
+            tmp_close_airports = stops_tmp.sort_values(by='distance_arrival').head(3)
     airport_list['arrival'] = tmp_close_airports.city_sky.unique()
     logger.info(f'airports {airport_list}')
     return airport_list
@@ -417,21 +442,8 @@ def get_range_km(local_distance_m):
 def main(query):
     airports = get_airports_from_geo_locs(query.start_point, query.end_point)
     all_responses = list()
-    # Let's try calling API for several airports at a time
-    #json_query = {
-    #                'query': {
-    #                    'start': {
-    #                        'coord': airports['departure'],
-    #                    },
-    #                    'to': {
-    #                        'coord': airports['arrival'],
-    #                    },
-    #                    'datetime': query.departure_date
-    #                    }
-    #            }
-    #all_responses = skyscanner_query_directions(json_query)
-
-    # Let's call the API for every couple airport departure and arrival
+    some_journey_found = False
+    # Let's call the API for every couple cities departure and arrival
     for airport_dep in airports['departure']:
         for airport_arrival in airports['arrival']:
             logger.info(f'call Skyscanner from {airport_dep} to {airport_arrival}')
@@ -446,12 +458,11 @@ def main(query):
                     'datetime': query.departure_date
                     }
             }
-            single_route = skyscanner_query_directions(json_query)
+            single_route = skyscanner_query_directions(json_query, some_journey_found)
             if single_route is not None:
+                some_journey_found = True
                 for trip in single_route:
                     all_responses.append(trip)
-            # print(f'all good from {airport_dep} to {airport_arrival}')
-
 
     all_reponses_json = list()
     for journey_sky in all_responses:
