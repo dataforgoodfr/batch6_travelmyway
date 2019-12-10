@@ -17,6 +17,10 @@ _STATION_WAITING_PERIOD = constants.WAITING_PERIOD_TRAINLINE
 
 
 def update_trainline_stops(url=_STATIONS_CSV_FILE):
+    """
+        This function loads the DB containing all the Trainline station we can call
+        It's downloaded from a github account and enriched to match TMW's needs
+     """
     csv_content = requests.get(url).content
     all_stops = pd.read_csv(io.StringIO(csv_content.decode('utf-8')),
                             sep=';', index_col=0, low_memory=False)
@@ -46,15 +50,19 @@ def update_trainline_stops(url=_STATIONS_CSV_FILE):
     return all_stops
 
 
+# When the server starts we load the station DB
 _ALL_STATIONS = update_trainline_stops()
-
+# This is the regular format for regular passenger information to be sent to Trainline API
 _PASSENGER = [{'id': '3c29a998-270e-416b-83f0-936b606638da', 'age': 39,
                'cards': [], 'label': '3c29a998-270e-416b-83f0-936b606638da'}]
 
 
 # function to get all trainline fares and trips
 def search_for_all_fares(date, origin_id, destination_id, passengers, include_bus=True, segment_details=True):
-    # logger.info('inside search for fares')
+    """
+        This function takes in all the relevant information for the API call and returns a
+            dataframe containing all the information from Trainline API
+         """
     # Define headers (according to github/trainline)
     headers = {
         'Accept': 'application/json',
@@ -169,7 +177,11 @@ def format_trainline_response(rep_json, segment_details=True, only_sellable=True
 
 
 def trainline_journeys(df_response, _id=0):
-    # affect a price to each leg
+    """
+        This function takes in a DF with detailled info about all the Trainline trips
+        It returns a list of TMW journey objects
+    """
+    # affect a price to each leg (otherwise we would multiply the price by the number of legs
     df_response['price_step'] = df_response.cents / (df_response.nb_segments*100)
 
     # Compute distance for each leg
@@ -319,6 +331,10 @@ def pandas_explode(df, column_to_explode):
 
 # Find the stops close to a geo point
 def get_stops_from_geo_locs(geoloc_dep, geoloc_arrival, max_distance_km=50):
+    """
+        This function takes in the departure and arrival points of the TMW journey and returns
+            the 3 closest stations within 50 km
+    """
     stops_tmp = _ALL_STATIONS.copy()
     # compute proxi for distance (since we only need to compare no need to take the earth curve into account...)
     stops_tmp['distance_dep'] = stops_tmp.apply(lambda x: distance(geoloc_dep, x.geoloc).m, axis =1)
@@ -334,6 +350,10 @@ def get_stops_from_geo_locs(geoloc_dep, geoloc_arrival, max_distance_km=50):
 
 
 def main(query):
+    """
+       This function is called from app/main.py
+       It takes a query object and returns a list of journey objects
+   """
     stops = get_stops_from_geo_locs(query.start_point, query.end_point)
     # print(f'{len(stops.departure)} departure parent station found ')
     # print(f'{len(stops.arrival)} arrival parent station found ')
