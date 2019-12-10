@@ -22,7 +22,12 @@ pd.set_option('display.width', 1000)
 _AIRPORT_WAITING_PERIOD = constants.WAITING_PERIOD_AIRPORT
 
 
+
 def load_airport_database():
+    """
+    Load the airport database used to do smart calls to Skyscanner API.
+    This DB can be reconstructed thanks to the recompute_airport_database (see end of file)
+    """
     path = os.path.join(os.getcwd(), 'skyscanner_europe_airport_list.csv')  #
     try:
         logger.info(path)
@@ -47,11 +52,14 @@ def load_airport_database():
             logger.info(airport_list.sample(1))
             return airport_list
 
-
+# When the server starts it logs the airport db (only once)
 _AIRPORT_DF = load_airport_database()
 
 
 def skyscanner_query_directions(query, plane_jouney_found=True):
+    """
+    This function takes an object query and returns a list of journey object thanks to the Skyscanner API
+    """
     # extract departure and arrival points
     logger.info(query['query']['start']['coord'])
     # departure_points = ';'.join(query['query']['start']['coord'])
@@ -69,6 +77,10 @@ def skyscanner_query_directions(query, plane_jouney_found=True):
 
 
 def skyscanner_journeys(df_response, _id=0):
+    """
+    This function takes in a dataframe with detailled information on the plane journeys returned by Skyscanner API
+        and returns a list containing one TMW journey object for each of those plane journey
+    """
     # affect a price to each leg
     df_response['price_step'] = df_response.PriceTotal_AR / df_response.nb_segments
     df_response['DepartureDateTime'] = pd.to_datetime(df_response['DepartureDateTime'])
@@ -183,9 +195,17 @@ def get_price_from_itineraries(x):
 
 
 def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, plane_jouney_found=True, details=False, try_number=1):
+    """
+    Here we actually call the Skyscanner API with all the relevant information asked by the user
+    First we create a session with the first POST request, then we read the results with the 2nd GET request
+    For each of the calls we try to deal with all the potential errors the API could return, most importantly
+        we want to wait and try again if the API says it's too busy right now
+    """
     url = "https://skyscanner-skyscanner-flight-search-v1.p.rapidapi.com/apiservices/pricing/v1.0"
     logger.info(f'get_planes try nb {try_number}')
     one_way = date_return is None
+    # If another call to Skyscanner has already been successful, we don't want to waste too much time
+    # so we decrease the max number of retries
     if plane_jouney_found:
         max_retries = 2
     else :
@@ -200,37 +220,45 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
         'x-rapidapi-key': tmw_api_keys.SKYSCANNER_API_KEY,
         'content-type': "application/x-www-form-urlencoded"
     }
-    # create session
-    # print(f'request session for {departure} to {arrival}')
+    # First POST request to create session
     response = requests.request("POST", url, data=payload, headers=headers)
     # get session key
+    # In some cases the API won't give a session key "Location" so we try and except
     try:
         # print(response.headers)
         key = response.headers['Location'].split('/')[-1]
     except :
         # Retry calling API 3 times
         try:
-            # Is there an error with the query ?
+            # Let's look at the error from the API
             error = response.json()['ValidationErrors']
             logger.warning(error)
+            # When the API says it's too busy, if we haven't past the max number of retires
             if (error[0]['Message'] == 'Rate limit has been exceeded: 400 PerMinute for PricingSession')&(try_number < max_retries):
                 time.sleep(1)
                 logger.info(f'we try our luck for chance {try_number + 1} out of 3 with Skyscanner')
+                # We call this same function again with the try_number increased by one
                 return get_planes_from_skyscanner(date_departure, date_return, departure, arrival,
                                            details=True, try_number=try_number + 1)
             else:
-                # we couldn't find any trips through the API
+                # we couldn't find any trips through the API so we return an empty DF
                 logger.info(f'out because {error}')
                 return pd.DataFrame()
         except:
+            # If the API said we called too much, we wait a little bit more and try again (YOLO)
             if (response.status_code == 429) & (try_number < max_retries):
                 time.sleep(1.5)
+                # We call this same function again with the try_number increased by one
                 return get_planes_from_skyscanner(date_departure, date_return, departure, arrival,
                                                   details=True, try_number=try_number+1)
 
+            # Otherwise we return an empty DF
             logger.warning('The Skyscanner API returned an unknown error')
             return pd.DataFrame()
+
+    # Now we construct the 2nd request to extract the results from the session we just created
     url = 'https://skyscanner-skyscanner-flight-search-v1.p.rapidapi.com/apiservices/pricing/uk2/v1.0/' + key
+    # We only take the first page, 100 first results
     querystring = {"pageIndex": "0", "pageSize": "100"}
 
     headers = {
@@ -244,6 +272,9 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
     waiting_start_time = perf_counter()
     waiting_time = perf_counter()
     try:
+        # When the API says it's too busy, or if the response is not complete yet we send the request again
+        # However we don't exceed the max number of retry and we don't wait for more than 5 sec
+        #   for the response to be completed
         while ((response.status_code == 429) or (response.json()['Status'] != 'UpdatesComplete')) &\
                 (waiting_time-waiting_start_time < 5):
             response = requests.request("GET", url, headers=headers, params=querystring)
@@ -254,19 +285,24 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
         if response.status_code == 429:
             logger.info('weirdosse')
         if response.status_code == 200:
+            # Should not happen
             logger.info('out because chai po')
             logger.info(response.json()['Status'])
             logger.info(response.json()['Legs'])
         return pd.DataFrame()
 
     try :
+        # When the response actually contains something we call the fromat fonction to
+        #    regroup all the necessary infos
         if len(response.json()['Legs']) > 0:
             return format_skyscanner_response(response.json(), one_way, details)
         else :
-            # print(f'no flight found lets move on {response}')
+            # The API could not find any trips
             logger.info('out because no legs. Looked like this though')
             logger.info(response.json())
+            return pd.DataFrame()
     except:
+        # Should not happen
         return pd.DataFrame()
 
 
@@ -406,6 +442,13 @@ def pandas_explode(df, column_to_explode):
 
 # Find the stops close to a geo point
 def get_airports_from_geo_locs(geoloc_dep, geoloc_arrival):
+    """
+    This function takes in the departure and arrival points of the TMW journey and returns
+        the most relevant corresponding Skyscanner cities to build a plane journey
+    We first look at the closest airport, if the city is big enough we keep only one city,
+        if not we add the next closest airport and if this 2nd city is big enough we keep only the two first
+        else we look at the 3rd and final airports
+    """
     stops_tmp = _AIRPORT_DF.copy()
     # compute proxi for distance (since we only need to compare no need to take the earth curve into account...)
     stops_tmp['distance_dep'] = stops_tmp.apply(lambda x: distance(geoloc_dep, x.geoloc).m, axis=1)
@@ -440,6 +483,10 @@ def get_range_km(local_distance_m):
 
 
 def main(query):
+    """
+    This is a the function called from app/main.py. It takes a query object and returns a list of journey objects
+    First we find which skyscanner cities to call, then we call the API and format the response into a list of journey objects
+    """
     airports = get_airports_from_geo_locs(query.start_point, query.end_point)
     all_responses = list()
     some_journey_found = False
