@@ -60,6 +60,11 @@ def pandas_explode(df, column_to_explode):
 
 # Get all bus stations available for OuiBus / Needs to be updated regularly
 def update_stop_list():
+    """
+        This function loads the DB containing all the Ouibus station we can call
+        It calls the OuiBus API, and formats the response into a DF containing
+         geolocation amongst other things
+     """
     headers = {
         'Authorization': 'Token ' + tmw_api_keys.OUIBUS_API_KEY,
     }
@@ -85,6 +90,10 @@ def update_stop_list():
 
 # Fonction to call Ouibus API
 def search_for_all_fares(date, origin_id, destination_id, passengers):
+    """
+    This function takes in all the relevant information for the API call and returns a
+        raw dataframe containing all the information from OuiBus API
+     """
     headers = {
         'Authorization': 'Token ' + tmw_api_keys.OUIBUS_API_KEY,
         'Content-Type': 'application/json',
@@ -106,6 +115,10 @@ def search_for_all_fares(date, origin_id, destination_id, passengers):
 
 # Find the stops close to a geo point
 def get_stops_from_geo_loc(geoloc_origin, geoloc_destination, max_distance_km=50):
+    """
+        This function takes in the departure and arrival points of the TMW journey and returns
+            the 3 closest stations within 50 km
+    """
     stops_tmp = _ALL_BUS_STOPS.copy()
     # compute proxi for distance (since we only need to compare no need to take the earth curve into account...)
     stops_tmp['distance_origin'] = stops_tmp.apply(
@@ -120,6 +133,10 @@ def get_stops_from_geo_loc(geoloc_origin, geoloc_destination, max_distance_km=50
 
 
 def format_ouibus_response(df_response):
+    """
+        This function takes in the raw OuiBus API response (previously converted into a DF)
+        It return a more enriched dataframe with all the needed information
+    """
     # enrich information
     df_response['nb_segments'] = df_response.apply(lambda x: len(x.legs), axis=1)
     df_response['arrival'] = pd.to_datetime(df_response['arrival'])
@@ -178,6 +195,10 @@ def compute_trips(date, passengers, geoloc_origin, geoloc_destination):
 
 
 def ouibus_journeys(df_response, _id=0):
+    """
+    This function takes in a DF with detailled info about all the OuiBus trips
+    It returns a list of TMW journey objects
+        """
     # affect a price to each leg
     df_response['price_step'] = df_response.price_cents / (df_response.nb_segments * 100)
     # Compute distance for each leg
@@ -270,6 +291,10 @@ def ouibus_journeys(df_response, _id=0):
 
 
 def main(query):
+    """
+        This function is called from app/main.py
+        It takes a query object and returns a list of journey objects
+    """
     all_trips = compute_trips(query.departure_date, _PASSENGER, query.start_point, query.end_point)
 
     if all_trips.empty:
@@ -277,8 +302,9 @@ def main(query):
     else:
         return ouibus_journeys(all_trips)
 
-
+# When the server starts it will load the station DB
 _ALL_BUS_STOPS = update_stop_list()
+# This is the regular format for regular passenger information to be sent to OuiBus API
 _PASSENGER = [{"id": 1,  "age": 30,  "price_currency": "EUR"}]
 
 if __name__ == '__main__':
