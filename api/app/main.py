@@ -26,7 +26,7 @@ def filter_and_label_relevant_journey(journey_list):
     journey_list.sort(key=lambda x: x.total_gCO2, reverse=False)
     journey_list[0].label = constants.LABEL_CLEANEST_JOURNEY
     filtered_journeys = filtered_journeys + journey_list[0:nb_journey_per_label]
-    logger.info(f'after labels we have {len(filtered_journeys)} journeys in the filter')
+    # logger.info(f'after labels we have {len(filtered_journeys)} journeys in the filter')
     # Making sure we hand out at least one journey for each type (if possible)
     type_checks = {constants.CATEGORY_COACH_JOURNEY: False, constants.CATEGORY_TRAIN_JOURNEY: False,
                    constants.CATEGORY_PLANE_JOURNEY: False, constants.CATEGORY_CAR_JOURNEY: False}
@@ -43,7 +43,7 @@ def filter_and_label_relevant_journey(journey_list):
         if (constants.CATEGORY_CAR_JOURNEY in journey.category) & (not type_checks[constants.CATEGORY_CAR_JOURNEY]):
             filtered_journeys.append(journey)
             type_checks[constants.CATEGORY_CAR_JOURNEY] = True
-    logger.info(f'after type check we have {len(filtered_journeys)} journeys in the filter')
+    # logger.info(f'after type check we have {len(filtered_journeys)} journeys in the filter')
     # Delete double entries
     return list(set(filtered_journeys))
 
@@ -51,25 +51,25 @@ def filter_and_label_relevant_journey(journey_list):
 def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.35], geoloc_arrival=[43.60,1.44]):
     # Let's create the start to finish query
     query_start_finish = tmw.query(0, geoloc_dep, geoloc_arrival, departure_date)
-    logger.info(f'query_start_finish{query_start_finish.to_json()}')
+    # logger.info(f'query_start_finish{query_start_finish.to_json()}')
     # Start the stopwatch / counter
     t1_start = perf_counter()
     # First we look for intercities journeys
     trainline_journeys = Trainline.main(query_start_finish)
-    logger.info('trainline good')
+    # logger.info('trainline good')
     skyscanner_journeys = Skyscanner.main(query_start_finish)
-    logger.info('sky good')
+    # logger.info('sky good')
     ouibus_journeys = OuiBus.main(query_start_finish)
-    logger.info('ouibus good')
+    # logger.info('ouibus good')
     ors_journey = ORS.ORS_query_directions(query_start_finish)
     # Stop the stopwatch / counter
     t1_stop = perf_counter()
-    logger.info(f'Elapsed time during the interurban API calls in seconds: {t1_stop-t1_start}')
-    logger.info('here are the plane journeys')
+    # logger.info(f'Elapsed time during the interurban API calls in seconds: {t1_stop-t1_start}')
+    # logger.info('here are the plane journeys')
     all_journeys = trainline_journeys + skyscanner_journeys + ouibus_journeys
     # all_journeys = skyscanner_journeys
     i = 0
-    logger.info(f'we found {len(all_journeys)} inter urban journeys')
+    # logger.info(f'we found {len(all_journeys)} inter urban journeys')
     # Then we call Navitia to get the beginning and the end of the journey
     # Let's record all the query we need to send to Navitia, deduplicate them and call NAvitia only once
     navitia_queries = list()
@@ -86,7 +86,7 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
         if navitia_query.to_json() in navitia_query_done:
             # if query has been called then skip
             continue
-        logger.info(f'call Navitia with {navitia_query.to_json()}')
+        # logger.info(f'call Navitia with {navitia_query.to_json()}')
         navitia_steps = Navitia.navitia_query_directions(navitia_query)
         navitia_dict[str(navitia_query.to_json())] = navitia_steps
         navitia_query_done.append(navitia_query.to_json())
@@ -104,12 +104,12 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
             interurban_journey.add_steps(station_to_arrival_steps[0].steps, start_end=False)
             interurban_journey.update()
         else:
-            logger.info(f'remove category {interurban_journey.category}')
-            logger.info(f'remove price {interurban_journey.total_price_EUR}')#
-            logger.info(f'remove price {interurban_journey.total_distance}')
-            logger.info(f'remove legs nb {len(interurban_journey.steps)}')
-            logger.info(f'last leg departs from {interurban_journey.steps[-1].departure_stop_name}')
-            logger.info(f'last leg arrives in  {interurban_journey.steps[-1].arrival_stop_name}')
+            # logger.info(f'remove category {interurban_journey.category}')
+            # logger.info(f'remove price {interurban_journey.total_price_EUR}')#
+            # logger.info(f'remove price {interurban_journey.total_distance}')
+            # logger.info(f'remove legs nb {len(interurban_journey.steps)}')
+            # logger.info(f'last leg departs from {interurban_journey.steps[-1].departure_stop_name}')
+            # logger.info(f'last leg arrives in  {interurban_journey.steps[-1].arrival_stop_name}')
             all_journeys.remove(interurban_journey)
 
     all_journeys.append(ors_journey)

@@ -4,7 +4,10 @@
   "private": true,
   "dependencies": {
     "algolia-places-react": "^1.5.0",
+    "axios": "^0.19.0",
+    "babel-polyfill": "^6.26.0",
     "global": "^4.4.0",
+    "moment": "^2.24.0",
     "node-sass": "^4.13.0",
     "react": "^16.11.0",
     "react-datepicker": "^2.10.0",
@@ -13,8 +16,7 @@
     "react-router-dom": "^5.1.2",
     "react-scripts": "^3.2.0",
     "semantic-ui-css": "^2.4.1",
-    "semantic-ui-react": "^0.88.1",
-    "moment": "^2.24.0"
+    "semantic-ui-react": "^0.88.1"
   },
   "devDependencies": {
     "@babel/core": "^7.7.2",
