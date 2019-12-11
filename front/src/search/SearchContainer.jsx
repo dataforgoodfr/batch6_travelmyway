@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import fakeJourney from '../../fakeJourney'
 import AutocompleteAddress from './AutocompleteAddress'
 import DatePicker from './DatePicker'
+import { getJourney } from '../services/api'
 
 const SearchContainer = ({ setResults }) => {
   const [departureCoordinates, setDepartureCoordinates] = useState({})
@@ -21,17 +22,28 @@ const SearchContainer = ({ setResults }) => {
     setStartDate(date)
   }
 
-  const submitForm = () => {
+  const submitForm = async () => {
     const formatedDate = startDate.toLocaleDateString()
-    setResults([fakeJourney])
+    // setResults([fakeJourney])
     // const url = `http://localhost:5000/journey?fromlat=${departureCoordinates.lat}&fromlng=${departureCoordinates.lng}&tolat=${arrivalCoordinates.lat}&tolng=${arrivalCoordinates.lng}&date=${formatedDate}`
-    const url = `http://localhost:5000/fake_journey?from=${departureCoordinates.lat}, ${departureCoordinates.lng}&to=${arrivalCoordinates.lng}, ${arrivalCoordinates.lat}&start=${formatedDate}`
+    // const url = `http://localhost:5000/fake_journey?from=${departureCoordinates.lat}, ${departureCoordinates.lng}&to=${arrivalCoordinates.lng}, ${arrivalCoordinates.lat}&start=${formatedDate}`
     // window
     //   .fetch(url, {
     //     method: 'GET',
     //     mode: 'no-cors'
     //   })
     //   .then(res => res.json())
+
+    const result = await getJourney(
+      departureCoordinates.lat,
+      departureCoordinates.lng,
+      arrivalCoordinates.lat,
+      arrivalCoordinates.lng,
+      formatedDate
+    )
+
+    console.log('⬇⬇⬇ call API ⬇⬇⬇')
+    console.log('----------- beep boop', result.data)
   }
 
   return (

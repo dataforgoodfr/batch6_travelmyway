@@ -8,15 +8,28 @@ import StepsCard from './StepsCard'
 import SearchBarRecap from './SearchBarRecap'
 import { Grid } from 'semantic-ui-react'
 import { getCO2InKg } from '../journey.utils'
+import { getJourney } from '../services/api'
+
+const getData = async () => {
+  try {
+    const { data } = await getJourney()
+    console.log(data)
+    return data
+  } catch (e) {
+    console.log(e)
+  }
+}
 
 const DetailedResultContainer = ({ selectedJourney, results }) => {
   const totalCO2InKg = getCO2InKg(selectedJourney.total_gCO2)
+  console.log('⬇⬇⬇ call API ⬇⬇⬇')
+  const stuff = getData()
   return (
     <div className="page-detailed-results">
       <Header />
       <SearchBarRecap />
       <main className="content-wrapper">
-        <Grid>
+        <Grid stackable>
           <Grid.Row>
             <Grid.Column>
               <DetailedResultCard selectedJourney={selectedJourney} />
