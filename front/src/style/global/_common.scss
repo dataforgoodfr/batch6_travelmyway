@@ -22,10 +22,10 @@ html {
   &.align-center {
     align-items: center;
   }
+}
 
-  .inline-flex {
-    display: inline-flex;
-  }
+.inline-flex {
+  display: inline-flex;
 }
 
 .center {
@@ -38,11 +38,21 @@ html {
 .no-wrap {
   white-space: nowrap;
 }
+
 p {
   margin: 0;
   color: $primary-color;
   &.bold {
     font-weight: bold;
+  }
+}
+
+input {
+  color: grey;
+  height: 50px;
+  border-radius: 50%;
+  &::placeholder {
+    color: #c1c1c1;
   }
 }
 

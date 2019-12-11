@@ -14,17 +14,22 @@
     width: 150px;
   }
 
-  .flexRow {
-    width: 100%;
-    display: inline-flex;
+  .step-wrapper {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-end;
+    height: 80px;
   }
 
   .step {
     width: 50px;
+    text-align: center;
+    margin-right: 6px;
 
     .material-icons {
       color: $primary-color;
-      font-size: 36px;
+      font-size: 44px;
     }
   }
 }

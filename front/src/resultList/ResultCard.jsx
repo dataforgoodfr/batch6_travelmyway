@@ -2,7 +2,7 @@ import React from 'react'
 import { getTimeFromDate, getDurationFromSeconds } from '../journey.utils'
 
 const renderStep = step => {
-  const journeyType = {
+  const stepIcon = {
     Walking: <i className="material-icons">directions_walking</i>,
     Coach: <i className="material-icons">directions_bus</i>,
     ratp: <i className="material-icons">subway</i>,
@@ -11,7 +11,7 @@ const renderStep = step => {
   }
   return (
     <div key={step.id} className="step">
-      {journeyType[step.type]}
+      {stepIcon[step.type]}
       <p className="text-info small">{getDurationFromSeconds(step.duration_s)}</p>
     </div>
   )
@@ -46,7 +46,7 @@ const ResultCard = ({ result }) => {
           </div>
         </div>
       </div>
-      <div className="flex-row space-between flex">
+      <div className="step-wrapper">
         <div className="inline-flex">{result.journey_steps.map(step => renderStep(step))}</div>
 
         <div className="ecology-info">
