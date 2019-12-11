@@ -43,6 +43,7 @@ const SearchContainer = ({ setResults }) => {
       formatedDate
     )
 
+    console.log('⬇⬇⬇ call API ⬇⬇⬇')
     console.log('----------- beep boop', result.data)
   }
 

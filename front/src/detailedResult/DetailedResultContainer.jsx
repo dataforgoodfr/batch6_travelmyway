@@ -13,7 +13,7 @@ import { getJourney } from '../services/api'
 const getData = async () => {
   try {
     const { data } = await getJourney()
-    console.log('data from API call', data)
+    console.log(data)
     return data
   } catch (e) {
     console.log(e)
@@ -22,6 +22,7 @@ const getData = async () => {
 
 const DetailedResultContainer = ({ selectedJourney, results }) => {
   const totalCO2InKg = getCO2InKg(selectedJourney.total_gCO2)
+  console.log('⬇⬇⬇ call API ⬇⬇⬇')
   const stuff = getData()
   return (
     <div className="page-detailed-results">
