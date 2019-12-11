@@ -7,6 +7,7 @@ const AutocompleteAddress = ({ changeAddress, placeholder }) => {
       placeholder={placeholder}
       className="autocomplete-address"
       options={{
+        // ⬇️ @TODO placer dans un .env ?
         appId: 'plIMLBK6SAIV',
         apiKey: '3eafdf4bffe092bb1a6141c4eda52f9f',
         language: 'fr'

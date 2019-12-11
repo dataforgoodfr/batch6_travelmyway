@@ -3,7 +3,6 @@ import { Grid } from 'semantic-ui-react'
 import { getTimeFromDate, getDurationFromSeconds, journeyType } from '../journey.utils'
 
 const SmallResultCard = ({ result }) => {
-  console.log('-----------result', result)
   const departureHour = getTimeFromDate(result.departure_date)
   const arrivalHour = getTimeFromDate(result.arrival_date)
   const totalDuration = getDurationFromSeconds(result.total_duration)
@@ -17,7 +16,7 @@ const SmallResultCard = ({ result }) => {
         <p>Voir ></p>
       </div>
       <div className="content">
-        <Grid>
+        <Grid stackable>
           <Grid.Row>
             <Grid.Column floated="left" width={6}>
               <div className="flex space-between">
