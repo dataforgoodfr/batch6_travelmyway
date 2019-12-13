@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Grid } from 'semantic-ui-react'
 import fakeJourney from '../../fakeJourney'
 import AutocompleteAddress from './AutocompleteAddress'
 import DatePicker from './DatePicker'
@@ -72,27 +71,17 @@ const SearchContainer = ({ setResults }) => {
       </div>
 
       <div className="searchbar_bottom">
-        <form action="" method="post">
-          <Grid>
-            <Grid.Row>
-              <Grid.Column width={5}>
-                <AutocompleteAddress
-                  placeholder="9 rue d'Alexandrie, 75002 Paris"
-                  changeAddress={changeDepartureAddress}
-                />
-              </Grid.Column>
-              <Grid.Column width={5}>
-                <AutocompleteAddress
-                  placeholder="9 rue d'Alexandrie, 75002 Paris"
-                  changeAddress={changeArrivalAddress}
-                />
-              </Grid.Column>
-              <Grid.Column width={5}>
-                <DatePicker selectDate={changeStartDate} date={startDate} />
-              </Grid.Column>
-              <Link to="/results" onClick={submitForm} className="submit" />
-            </Grid.Row>
-          </Grid>
+        <form action="" method="post" className="flex space-between">
+          <AutocompleteAddress
+            placeholder="9 rue d'Alexandrie, 75002 Paris"
+            changeAddress={changeDepartureAddress}
+          />
+          <AutocompleteAddress
+            placeholder="9 rue d'Alexandrie, 75002 Paris"
+            changeAddress={changeArrivalAddress}
+          />
+          <DatePicker selectDate={changeStartDate} date={startDate} />
+          <Link to="/results" onClick={submitForm} className="submit" />
         </form>
       </div>
     </div>
