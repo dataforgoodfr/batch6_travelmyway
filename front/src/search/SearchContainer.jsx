@@ -24,15 +24,6 @@ const SearchContainer = ({ setResults }) => {
 
   const submitForm = async () => {
     const formatedDate = startDate.toLocaleDateString()
-    // setResults([fakeJourney])
-    // const url = `http://localhost:5000/journey?fromlat=${departureCoordinates.lat}&fromlng=${departureCoordinates.lng}&tolat=${arrivalCoordinates.lat}&tolng=${arrivalCoordinates.lng}&date=${formatedDate}`
-    // const url = `http://localhost:5000/fake_journey?from=${departureCoordinates.lat}, ${departureCoordinates.lng}&to=${arrivalCoordinates.lng}, ${arrivalCoordinates.lat}&start=${formatedDate}`
-    // window
-    //   .fetch(url, {
-    //     method: 'GET',
-    //     mode: 'no-cors'
-    //   })
-    //   .then(res => res.json())
 
     const result = await getJourney(
       departureCoordinates.lat,
