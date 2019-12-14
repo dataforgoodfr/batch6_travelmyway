@@ -1,15 +1,7 @@
 import React from 'react'
 import { Divider } from 'semantic-ui-react'
-import moment from 'moment'
-import { getTimeFromDate, getDurationFromSeconds, journeyType } from '../journey.utils'
-
-const renderStep = step => {
-  return (
-    <div key={step.id} className="step">
-      <i className="material-icons">{journeyType[step.type]}</i>
-    </div>
-  )
-}
+import { getTimeFromDate, getDurationFromSeconds } from '../journey.utils'
+import StepIcon from '../components/StepIcon'
 
 const StepsCard = ({ steps }) => {
   return (
@@ -22,7 +14,7 @@ const StepsCard = ({ steps }) => {
           <div key={i}>
             <div className="flex space-between align-center">
               <p className="text-info small">{formattedDate}</p>
-              {renderStep(step)}
+              <StepIcon stepType={step.type} />
               <p>{step.label}</p>
               <p className="text-info small">{formattedDuration}</p>
             </div>

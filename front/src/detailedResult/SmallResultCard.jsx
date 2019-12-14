@@ -1,18 +1,16 @@
 import React from 'react'
 import { Grid } from 'semantic-ui-react'
-import { getTimeFromDate, getDurationFromSeconds, journeyType } from '../journey.utils'
+import { getTimeFromDate, getDurationFromSeconds } from '../journey.utils'
+import StepIcon from '../components/StepIcon'
 
 const SmallResultCard = ({ result }) => {
   const departureHour = getTimeFromDate(result.departure_date)
   const arrivalHour = getTimeFromDate(result.arrival_date)
   const totalDuration = getDurationFromSeconds(result.total_duration)
-  const renderStep = step => {
-    return <i className="material-icons">{journeyType[step]}</i>
-  }
   return (
     <div className="small-result-card">
       <div className="header flex align-center">
-        {renderStep(result.category[0])}
+        <StepIcon stepType={result.category[0]} />
         <p>Voir ></p>
       </div>
       <div className="content">
