@@ -2,12 +2,19 @@ import React from 'react'
 import { getTimeFromDate, getDurationFromSeconds } from '../journey.utils'
 import StepIcon from '../components/StepIcon'
 
-const renderStep = step => (
-  <div key={step.id} className="step">
-    <StepIcon stepType={step.type} />
-    <p className="text-info small">{getDurationFromSeconds(step.duration_s)}</p>
-  </div>
-)
+const longDistanceSteps = ['Plane', 'car', 'Coach', 'Train']
+
+const renderStep = step => {
+  if (longDistanceSteps.some(longStep => longStep === step.type)) {
+    return (
+      <div key={step.id} className="step">
+        <StepIcon stepType={step.type} />
+        <p className="text-info small">{getDurationFromSeconds(step.duration_s)}</p>
+      </div>
+    )
+  }
+  return null
+}
 
 const ResultCard = ({ result }) => {
   const departureHour = getTimeFromDate(result.departure_date)

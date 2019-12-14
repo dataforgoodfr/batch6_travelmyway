@@ -12,11 +12,13 @@ const StepIcon = ({ stepType }) => {
     Walking: walk,
     Coach: bus,
     ratp: subway,
-    plane,
+    Plane: plane,
     car,
-    tisséo: subway,
+    métro: subway,
+    metro: subway,
     Waiting: wait,
-    train
+    Train: train,
+    bus
   }
   return <img src={stepIcon[stepType]} alt={stepType} />
 }

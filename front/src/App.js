@@ -9,7 +9,7 @@ import './style/main.scss'
 import journey from '../fakeJourney'
 
 const App = () => {
-  const [results, setResults] = useState([journey])
+  const [results, setResults] = useState(journey)
   return (
     <>
       <Router>
