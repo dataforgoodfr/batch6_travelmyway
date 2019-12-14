@@ -70,13 +70,10 @@ def compute_journey():
     except:
         return "<h1>KO</h1><p>geoloc format not recognized</p>"
     try:
-        #result = json.dumps(generate_fake_journey())
         result = main.compute_complete_journey(date_time, start, end)
         js = json.dumps(result)
-        logger.info(js)
         resp = flask.Response(js, status=200, mimetype='application/json')
         resp.headers['Access-Control-Allow-Origin'] = '*'
-
         return resp
     except Exception:
         return "Server error", 500
