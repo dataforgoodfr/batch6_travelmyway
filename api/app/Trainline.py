@@ -107,19 +107,19 @@ def format_trainline_response(rep_json, segment_details=True, only_sellable=True
     # logger.info(rep_json)
     # get folders (aggregated outbound or inbound trip)
     folders = pd.DataFrame.from_dict(rep_json['folders'])
-
+    logger.info(f'on a {(folders.shape)} trains')
     # get places
     stations = pd.DataFrame.from_dict(rep_json['stations'])
 
     # Filter out legs where there is no itinerary associated (so no price)
     if only_sellable:
         folders = folders[folders.is_sellable]
-
+        if folders.empty:
+            return None
     # Compute duration
     folders['departure_date'] = pd.to_datetime(folders.departure_date)
     folders['arrival_date'] = pd.to_datetime(folders.arrival_date)
     folders['duration_s'] = folders.apply(lambda x: (x.arrival_date - x.departure_date).seconds, axis=1)
-
     # Filter most relevant trips
     folders = folders.sort_values(by='cents').head(5).append(folders.sort_values(by='duration_s').head(5))
     folders = folders.drop_duplicates(subset='id')
@@ -361,10 +361,20 @@ def main(query):
     for departure_station_id in stops['departure']:
         for arrival_station_id in stops['arrival']:
             logger.info(f'call Trainline API from {departure_station_id}, to {arrival_station_id }')
-            detail_response = detail_response.append(search_for_all_fares(query.departure_date, int(departure_station_id),
+            # Trainline only responds for the next few hours, so we make 2 API calls
+            first_hours_fares = search_for_all_fares(query.departure_date, int(departure_station_id),
                                                                           int(arrival_station_id), _PASSENGER,
-                                                                          segment_details=True))
+                                                                          segment_details=True)
+            new_departure_date = pd.to_datetime(query.departure_date) + timedelta(hours=4)
+            second_hours_fares = search_for_all_fares(str(new_departure_date), int(departure_station_id),
+                                                                          int(arrival_station_id), _PASSENGER,
+                                                                          segment_details=True)
+            detail_response = detail_response.append(first_hours_fares).append(second_hours_fares)
 
+    # Make sure we don't have duplicates (due to the 2 calls)
+    detail_response = detail_response.drop_duplicates(['departure_date', 'arrival_date', 'nb_segments', 'name', 'latitude', 'longitude',
+                                                       'name_arrival', 'cents', 'departure_date_seg', 'name_depart_seg', 'arrival_date_seg', 'name_arrival_seg',
+                                                       'train_name', 'train_number'])
     all_journeys = trainline_journeys(detail_response)
 
     # for i in all_journeys:
