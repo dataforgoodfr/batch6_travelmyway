@@ -1,5 +1,5 @@
 import React from 'react'
-import { Grid, Button } from 'semantic-ui-react'
+import { Grid } from 'semantic-ui-react'
 import { getDurationFromSeconds, getTimeFromDate } from '../journey.utils'
 
 const DetailedResultCard = ({ selectedJourney }) => {

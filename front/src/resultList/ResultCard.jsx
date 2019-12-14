@@ -1,21 +1,13 @@
 import React from 'react'
 import { getTimeFromDate, getDurationFromSeconds } from '../journey.utils'
+import StepIcon from '../components/StepIcon'
 
-const renderStep = step => {
-  const stepIcon = {
-    Walking: <i className="material-icons">directions_walking</i>,
-    Coach: <i className="material-icons">directions_bus</i>,
-    ratp: <i className="material-icons">subway</i>,
-    tisséo: <i className="material-icons">face</i>,
-    Waiting: <i className="material-icons">airline_seat_recline_normal</i>
-  }
-  return (
-    <div key={step.id} className="step">
-      {stepIcon[step.type]}
-      <p className="text-info small">{getDurationFromSeconds(step.duration_s)}</p>
-    </div>
-  )
-}
+const renderStep = step => (
+  <div key={step.id} className="step">
+    <StepIcon stepType={step.type} />
+    <p className="text-info small">{getDurationFromSeconds(step.duration_s)}</p>
+  </div>
+)
 
 const ResultCard = ({ result }) => {
   const departureHour = getTimeFromDate(result.departure_date)
