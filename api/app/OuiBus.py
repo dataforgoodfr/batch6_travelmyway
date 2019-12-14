@@ -94,6 +94,8 @@ def search_for_all_fares(date, origin_id, destination_id, passengers):
     This function takes in all the relevant information for the API call and returns a
         raw dataframe containing all the information from OuiBus API
      """
+    # format date as yyy-mm-dd
+    date_formated = str(date)[0:10]
     headers = {
         'Authorization': 'Token ' + tmw_api_keys.OUIBUS_API_KEY,
         'Content-Type': 'application/json',
@@ -101,16 +103,25 @@ def search_for_all_fares(date, origin_id, destination_id, passengers):
     data = {
         "origin_id": origin_id,
         "destination_id": destination_id,
-        "date": date,
+        "date": date_formated,
         "passengers": passengers
     }
     timestamp = dt.now()
     r = requests.post('https://api.idbus.com/v1/search', headers=headers, data=json.dumps(data))
     # print(dt.now() - timestamp)
     try:
-        return pd.DataFrame.from_dict(r.json()['trips'])
+        trips = pd.DataFrame.from_dict(r.json()['trips'])
     except:
         return None
+    trips['departure'] = pd.to_datetime(trips.departure)
+    # Let's filter out trips where departure date is before requested time
+    trips = trips[trips.departure >= str(date)]
+    if not trips.empty:
+        return trips
+    else:
+        # no trips after the requested time, so let's call for the next day
+        date_tomorrow = (pd.to_datetime(date) + timedelta(days=1)).date()
+        search_for_all_fares(date_tomorrow, origin_id, destination_id, passengers)
 
 
 # Find the stops close to a geo point
@@ -295,6 +306,7 @@ def main(query):
         This function is called from app/main.py
         It takes a query object and returns a list of journey objects
     """
+
     all_trips = compute_trips(query.departure_date, _PASSENGER, query.start_point, query.end_point)
 
     if all_trips.empty:
