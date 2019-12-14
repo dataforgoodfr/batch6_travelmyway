@@ -14,8 +14,13 @@ Build a multi-modal journey
 
 
 def filter_and_label_relevant_journey(journey_list):
+    """
+    We want to filter the most relevant journeys we want to display to the user
+    We show the 3 cheapest, 3 fastest and 3 cleanest +
+    we make sure that we have at least one journey of each type (if possible)
+    """
     filtered_journeys = list()
-    nb_journey_per_label = min(len(journey_list), 2)
+    nb_journey_per_label = min(len(journey_list), 3)
     # Label the complete journeys
     journey_list.sort(key=lambda x: x.total_price_EUR, reverse=False)
     journey_list[0].label = constants.LABEL_CHEAPEST_JOURNEY
@@ -28,44 +33,59 @@ def filter_and_label_relevant_journey(journey_list):
     filtered_journeys = filtered_journeys + journey_list[0:nb_journey_per_label]
     # logger.info(f'after labels we have {len(filtered_journeys)} journeys in the filter')
     # Making sure we hand out at least one journey for each type (if possible)
-    type_checks = {constants.CATEGORY_COACH_JOURNEY: False, constants.CATEGORY_TRAIN_JOURNEY: False,
-                   constants.CATEGORY_PLANE_JOURNEY: False, constants.CATEGORY_CAR_JOURNEY: False}
+    type_checks = {constants.CATEGORY_COACH_JOURNEY: 0, constants.CATEGORY_TRAIN_JOURNEY: 0,
+                   constants.CATEGORY_PLANE_JOURNEY: 0, constants.CATEGORY_CAR_JOURNEY: 0}
     for journey in journey_list:
-        if (constants.CATEGORY_COACH_JOURNEY in journey.category) & (not type_checks[constants.CATEGORY_COACH_JOURNEY]):
+        if (constants.CATEGORY_COACH_JOURNEY in journey.category) & (not type_checks[constants.CATEGORY_COACH_JOURNEY] < 2):
             filtered_journeys.append(journey)
-            type_checks[constants.CATEGORY_COACH_JOURNEY] = True
-        if (constants.CATEGORY_TRAIN_JOURNEY in journey.category) & (not type_checks[constants.CATEGORY_TRAIN_JOURNEY]):
+            type_checks[constants.CATEGORY_COACH_JOURNEY] = type_checks[constants.CATEGORY_COACH_JOURNEY] + 1
+        if (constants.CATEGORY_TRAIN_JOURNEY in journey.category) & (not type_checks[constants.CATEGORY_TRAIN_JOURNEY] < 2):
             filtered_journeys.append(journey)
-            type_checks[constants.CATEGORY_TRAIN_JOURNEY] = True
-        if (constants.CATEGORY_PLANE_JOURNEY in journey.category) & (not type_checks[constants.CATEGORY_PLANE_JOURNEY]):
+            type_checks[constants.CATEGORY_TRAIN_JOURNEY] = type_checks[constants.CATEGORY_TRAIN_JOURNEY] + 1
+        if (constants.CATEGORY_PLANE_JOURNEY in journey.category) & (not type_checks[constants.CATEGORY_PLANE_JOURNEY] < 2):
             filtered_journeys.append(journey)
-            type_checks[constants.CATEGORY_PLANE_JOURNEY] = True
-        if (constants.CATEGORY_CAR_JOURNEY in journey.category) & (not type_checks[constants.CATEGORY_CAR_JOURNEY]):
+            type_checks[constants.CATEGORY_PLANE_JOURNEY] = type_checks[constants.CATEGORY_PLANE_JOURNEY] + 1
+        if (constants.CATEGORY_CAR_JOURNEY in journey.category) & (not type_checks[constants.CATEGORY_CAR_JOURNEY] < 2):
             filtered_journeys.append(journey)
-            type_checks[constants.CATEGORY_CAR_JOURNEY] = True
-    # logger.info(f'after type check we have {len(filtered_journeys)} journeys in the filter')
+            type_checks[constants.CATEGORY_CAR_JOURNEY] = type_checks[constants.CATEGORY_CAR_JOURNEY] + 1
+    logger.info(f'after type check we have {len(filtered_journeys)} journeys in the filter')
     # Delete double entries
     return list(set(filtered_journeys))
 
 
 def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.35], geoloc_arrival=[43.60,1.44]):
+    """
+    Build a multi-modal journey:
+    First we call each API to get a few journeys for each type of transportation
+    Then we create a multi-modal trip by calling NAvitia between the departure point and departure station
+        and between arrival station and arrival point.
+    To limit the nb of Navitia calls, we first create all the necessary Navitia queries, and deduplicate them
+        to make sure we call Navitia only once for each query
+    Finally we call the filter function to choose which journeys we keep
+    """
     # Let's create the start to finish query
     query_start_finish = tmw.query(0, geoloc_dep, geoloc_arrival, departure_date)
     # logger.info(f'query_start_finish{query_start_finish.to_json()}')
     # Start the stopwatch / counter
     t1_start = perf_counter()
     # First we look for intercities journeys
+    train_start = perf_counter()
     trainline_journeys = Trainline.main(query_start_finish)
-    # logger.info('trainline good')
+    train_stop = perf_counter()
+    logger.info(f'found {len(trainline_journeys)} trainline journeys')
+    sky_start = perf_counter()
     skyscanner_journeys = Skyscanner.main(query_start_finish)
-    # logger.info('sky good')
+    sky_stop = perf_counter()
+    logger.info(f'found {len(skyscanner_journeys)} skyscanner journeys')
+    ouibus_start = perf_counter()
     ouibus_journeys = OuiBus.main(query_start_finish)
-    # logger.info('ouibus good')
+    ouibus_stop = perf_counter()
+    logger.info(f'found {len(ouibus_journeys)} ouibus journeys')
+    ors_start = perf_counter()
     ors_journey = ORS.ORS_query_directions(query_start_finish)
-    # Stop the stopwatch / counter
-    t1_stop = perf_counter()
-    # logger.info(f'Elapsed time during the interurban API calls in seconds: {t1_stop-t1_start}')
-    # logger.info('here are the plane journeys')
+    ors_stop = perf_counter()
+    logger.info(f'ors good')
+
     all_journeys = trainline_journeys + skyscanner_journeys + ouibus_journeys
     # all_journeys = skyscanner_journeys
     i = 0
@@ -92,6 +112,7 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
         navitia_query_done.append(navitia_query.to_json())
         # navitia_dict_list.append(navitia_dict)
 
+    nav_start = perf_counter()
     # Reconsiliate between navitia queries and interrurban journeys
     for interurban_journey in all_journeys:
         # Get start to station query
@@ -111,24 +132,30 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
             # logger.info(f'last leg departs from {interurban_journey.steps[-1].departure_stop_name}')
             # logger.info(f'last leg arrives in  {interurban_journey.steps[-1].arrival_stop_name}')
             all_journeys.remove(interurban_journey)
+    nav_stop = perf_counter()
 
     all_journeys.append(ors_journey)
 
     # Filter most relevant Journeys
     filtered_journeys = filter_and_label_relevant_journey(all_journeys)
     filtered_journeys = [filtered_journey.to_json() for filtered_journey in filtered_journeys]
+    t1_stop = perf_counter()
+    logger.info(f'Elapsed time during computation: {t1_stop-t1_start} s')
+    logger.info(f'including: {train_stop - train_start}s for trainline ')
+    logger.info(f'including: {sky_stop - sky_start}s for skyscanner ')
+    logger.info(f'including: {ouibus_stop - ouibus_start}s for ouibus ')
+    logger.info(f'including: {nav_stop - nav_start}s for ouibus ')
     return filtered_journeys
 
 
-def main(departure_date='2019-12-18', geoloc_dep=[47.218,-1.554], geoloc_arrival=[45.067,7.682]):
+# This function only serves to run locally in debug
+def main(departure_date='2019-12-18T10:00:00', geoloc_dep=[48.85,2.35], geoloc_arrival=[43.5994, 1.4337]):
     all_trips = compute_complete_journey(departure_date, geoloc_dep, geoloc_arrival)
 
     for i in all_trips:
         print(type(i))
         print(i)
         #print(i.to_json())
-
-_PASSENGER = [{"id": 1, "age": 30, "price_currency": "EUR"}]
 
 if __name__ == '__main__':
     main()

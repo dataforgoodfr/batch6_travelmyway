@@ -66,7 +66,7 @@ def skyscanner_query_directions(query, plane_jouney_found=True):
     # arrival_points = ';'.join(query['query']['to']['coord'])
     departure_point = query['query']['start']['coord']
     arrival_point = query['query']['to']['coord']
-    # extract departure date
+    # extract departure date as 'yyyy-mm-dd'
     date_departure = query['query']['datetime']
     df_response = get_planes_from_skyscanner(date_departure, None, departure_point, arrival_point, plane_jouney_found, details=True)
     if df_response is None or df_response.empty:
@@ -201,6 +201,8 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
     For each of the calls we try to deal with all the potential errors the API could return, most importantly
         we want to wait and try again if the API says it's too busy right now
     """
+    # format date as yyy-mm-dd
+    date_formated = str(date_departure)[0:10]
     url = "https://skyscanner-skyscanner-flight-search-v1.p.rapidapi.com/apiservices/pricing/v1.0"
     logger.info(f'get_planes try nb {try_number}')
     one_way = date_return is None
@@ -211,7 +213,7 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
     else :
         max_retries = 5
     if one_way:
-        payload = f'cabinClass=economy&children=0&infants=0&country=FR&currency=EUR&locale=en-US&originPlace={departure}&destinationPlace={arrival}&outboundDate={date_departure}&adults=1'
+        payload = f'cabinClass=economy&children=0&infants=0&country=FR&currency=EUR&locale=en-US&originPlace={departure}&destinationPlace={arrival}&outboundDate={date_formated}&adults=1'
     else:
         payload = f'inboundDate={date_return}&cabinClass=economy&children=0&infants=0&country=FR&currency=USD&locale=en-US&originPlace={departure}&destinationPlace={arrival}&outboundDate={date_departure}&adults=1'
 
@@ -295,7 +297,7 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
         # When the response actually contains something we call the fromat fonction to
         #    regroup all the necessary infos
         if len(response.json()['Legs']) > 0:
-            return format_skyscanner_response(response.json(), one_way, details)
+            return format_skyscanner_response(response.json(), date_departure, one_way, details)
         else :
             # The API could not find any trips
             logger.info('out because no legs. Looked like this though')
@@ -306,7 +308,7 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
         return pd.DataFrame()
 
 
-def format_skyscanner_response(rep_json, one_way=False, segment_details=True, only_with_price=True):
+def format_skyscanner_response(rep_json, date_departure, one_way=False, segment_details=True, only_with_price=True):
     """
     Format complicated json with information flighing around into a clear dataframe
     See Skyscanner API doc for more info https://skyscanner.github.io/slate/?_ga=1.104705984.172843296.1446781555#polling-the-results
@@ -331,19 +333,24 @@ def format_skyscanner_response(rep_json, one_way=False, segment_details=True, on
     # We merge to get price for both the inbound and outbound legs
     legs = legs.merge(itineraries[['itinerary_id', 'OutboundLegId', 'PriceTotal_AR']], how='left', left_on='Id',
                       right_on='OutboundLegId', suffixes=['', '_out'])
-    # filter only most relevant itineraries (2 cheapest + 2 fastest)
-    limit = min(2, legs.shape[0])
-    legs = legs.sort_values(by='PriceTotal_AR').head(limit).append(legs.sort_values(by='Duration').head(limit))
 
     if not one_way:
         legs = legs.merge(itineraries[['itinerary_id', 'InboundLegId', 'PriceTotal_AR']], how='left',
                           left_on='Id', right_on='InboundLegId', suffixes=['', '_in'])
-    # Filter out legs where there is no itinary associated (so no price)
+    # Filter out legs where there is no itinerary associated (so no price)
     if only_with_price & one_way:
         legs = legs[(legs.Id.isin(itineraries.OutboundLegId.unique()))]
     elif only_with_price:
         legs = legs[
             (legs.Id.isin(itineraries.OutboundLegId.unique())) | (legs.Id.isin(itineraries.InboundLegId.unique()))]
+
+    # filter according to departure time
+    legs['Departure'] = pd.to_datetime(legs.Departure)
+    legs = legs[legs.Departure >= date_departure]
+    # filter only most relevant itineraries (2 cheapest + 2 fastest + 2 soonest)
+    limit = min(3, legs.shape[0])
+    legs = legs.sort_values(by='PriceTotal_AR').head(limit).append(legs.sort_values(by='Duration').head(limit))\
+        .append(legs.sort_values(by='Departure').head(limit))
 
     # We merge to get both the premiere departure airport and the final airport
     legs = legs.merge(places[['Id', 'Code', 'geoloc']], left_on='OriginStation', right_on='Id',
