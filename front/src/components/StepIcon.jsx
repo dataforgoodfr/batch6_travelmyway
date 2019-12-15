@@ -7,7 +7,7 @@ import train from '../img/svg/train.svg'
 import wait from '../img/svg/wait.svg'
 import walk from '../img/svg/walk.svg'
 
-const StepIcon = ({ stepType }) => {
+const StepIcon = ({ stepType, className }) => {
   const stepIcon = {
     Walking: walk,
     Coach: bus,
@@ -20,7 +20,11 @@ const StepIcon = ({ stepType }) => {
     Train: train,
     bus
   }
-  return <img src={stepIcon[stepType]} alt={stepType} />
+  return (
+    <div className={className}>
+      <img src={stepIcon[stepType]} alt={stepType} />
+    </div>
+  )
 }
 
 export default StepIcon
