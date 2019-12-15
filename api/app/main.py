@@ -99,10 +99,10 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
     thread_ors.start()
 
     # Attendre que les threads se terminent
-    trainline_journeys = thread_trainline.join()
-    skyscanner_journeys = thread_skyscanner.join()
-    ouibus_journeys = thread_ouibus.join()
-    ors_journey = thread_ors.join()
+    trainline_journeys, time_trainline = thread_trainline.join()
+    skyscanner_journeys, time_skyscanner = thread_skyscanner.join()
+    ouibus_journeys, time_ouibus = thread_ouibus.join()
+    ors_journey, time_or = thread_ors.join()
 
     all_journeys = trainline_journeys + skyscanner_journeys + ouibus_journeys
     # all_journeys = skyscanner_journeys
@@ -159,11 +159,11 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
     filtered_journeys = [filtered_journey.to_json() for filtered_journey in filtered_journeys]
     t1_stop = perf_counter()
     logger.info(f'Elapsed time during computation: {t1_stop-t1_start} s')
-    # logger.info(f'including: {train_stop - train_start}s for trainline ')
-    # logger.info(f'including: {sky_stop - sky_start}s for skyscanner ')
-    # logger.info(f'including: {ouibus_stop - ouibus_start}s for ouibus ')
-    # logger.info(f'including: {ors_stop -ors_start}s for ors ')
-    # logger.info(f'including: {nav_stop - nav_start}s for navitia ')
+    logger.info(f'including: {time_trainline}s for trainline ')
+    logger.info(f'including: {time_skyscanner}s for skyscanner ')
+    logger.info(f'including: {time_ouibus}s for ouibus ')
+    logger.info(f'including: {time_or}s for ors ')
+    logger.info(f'including: {nav_stop - nav_start}s for navitia ')
     return filtered_journeys
 
 

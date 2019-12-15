@@ -7,8 +7,9 @@ from threading import Thread
 from app import Trainline
 from app import Skyscanner
 from app import OuiBus
-from app import Navitia
+# from app import Navitia
 from app import ORS
+import time
 
 class journey:
     def __init__(self, _id, departure_date=dt.now(), arrival_date=dt.now(), steps=[]):
@@ -220,23 +221,34 @@ class ThreadComputeJourney(Thread):
         self._return = None
         self.api = api
         self.query = query
+        self.run_time = 0
 
     def run(self):
         if self.api == 'OuiBus':
+            time_launch = time.perf_counter()
             journeys = OuiBus.main(self.query)
+            self.run_time = time.perf_counter() - time_launch
         elif self.api == 'Skyscanner':
+            time_launch = time.perf_counter()
             journeys = Skyscanner.main(self.query)
+            self.run_time = time.perf_counter() - time_launch
         elif self.api == 'Trainline':
+            time_launch = time.perf_counter()
             journeys = Trainline.main(self.query)
+            self.run_time = time.perf_counter() - time_launch
         elif self.api == 'ORS':
+            time_launch = time.perf_counter()
             journeys = ORS.ORS_query_directions(self.query)
+            self.run_time = time.perf_counter() - time_launch
         else:
+            time_launch = time.perf_counter()
             journeys = list()
+            self.run_time = time.perf_counter() - time_launch
         self._return = journeys
 
     def join(self):
         Thread.join(self)
-        return self._return
+        return self._return, self.run_time
 """
 BASIC FUNCTIONS
 """
