@@ -7,6 +7,7 @@ from app import constants
 from navitia_client import Client
 from shapely.geometry import Point
 import re
+import unicodedata
 from datetime import datetime
 import shapely.wkt
 
@@ -233,8 +234,18 @@ def navitia_journeys_sections_type_public_transport(json, _id=0):
         display_information['name'],
         display_information['direction'],
     )
+    switcher_public_transport_type = {
+        'Métro': constants.TYPE_METRO,
+        'Bus': constants.TYPE_BUS,
+        'Tramway': constants.TYPE_TRAM,
+        'RER': constants.TYPE_METRO,
+    }
+    _type = switcher_public_transport_type.get(display_information['commercial_mode'],
+                                               "unknown public transport")
+    # _type = display_information['commercial_mode']
+    # _type = unicodedata.normalize('NFD', _type).encode('ascii', 'ignore').lower()
     step = tmw.journey_step(_id,
-                            _type=display_information['commercial_mode'].lower(),
+                            _type=_type,
                             label=label,
                             distance_m=json['geojson']['properties'][0]['length'],
                             duration_s=json['duration'],
