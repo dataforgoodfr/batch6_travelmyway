@@ -1,33 +1,46 @@
 import React from 'react'
-import { Grid } from 'semantic-ui-react'
 import { Link } from 'react-router-dom'
 import ResultCard from './ResultCard'
 import Header from '../components/Header'
 import SearchContainer from '../search/SearchContainer'
 
+const sortByCO2 = results => {
+  return results.sort((a, b) => a.total_gCO2 - b.total_gCO2)
+}
+
+const addEcoComparisonToJourney = journeys => {
+  const lessEcoJourney = journeys[journeys.length - 1]
+  const mostEcoJourney = journeys[0]
+  return journeys.map(journey => {
+    if (journey.id !== lessEcoJourney.id) {
+      return {
+        ...journey,
+        ecoComparison: Math.ceil(lessEcoJourney.total_gCO2 / journey.total_gCO2),
+        mostEcoJourney: journey.id === mostEcoJourney.id
+      }
+    }
+    return {
+      ...journey,
+      ecoComparison: Math.ceil(journey.total_gCO2 / mostEcoJourney.total_gCO2),
+      lessEcoJourney: true
+    }
+  })
+}
+
 const ResultListContainer = ({ results, setResults }) => {
+  const sortedJourneys = addEcoComparisonToJourney(sortByCO2(results))
+
   return (
     <div className="page-results">
       <Header />
       <SearchContainer setResults={setResults} />
       <main className="content-wrapper">
-        <Grid>
-          <Grid.Row>
-            <Grid.Column width={4}>
-              <div className="column">Trier par</div>
-            </Grid.Column>
-            <Grid.Column width={12}>
-              <div className="column">
-                <h2>Travel my Way vous recommande</h2>
-                {results.map(result => (
-                  <Link key={result.id} to={`/results/${result.id}`}>
-                    <ResultCard result={result} />
-                  </Link>
-                ))}
-              </div>
-            </Grid.Column>
-          </Grid.Row>
-        </Grid>
+        <h2>Travel my Way vous recommande</h2>
+        {sortedJourneys.map(journey => (
+          <Link key={journey.id} to={`/results/${journey.id}`}>
+            <ResultCard journey={journey} />
+          </Link>
+        ))}
       </main>
     </div>
   )
