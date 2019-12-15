@@ -1,9 +1,14 @@
 """
 INITIATE CLASSES
 """
-from datetime import datetime as dt
+from datetime import datetime as dt, timedelta
 import folium
-
+from threading import Thread
+from app import Trainline
+from app import Skyscanner
+from app import OuiBus
+from app import Navitia
+from app import ORS
 
 class journey:
     def __init__(self, _id, departure_date=dt.now(), arrival_date=dt.now(), steps=[]):
@@ -69,6 +74,10 @@ class journey:
         return _map
 
     def add_steps(self, steps_to_add, start_end=True):
+        # compute total duration of steps to update arrival and departure times
+        additionnal_duration = 0
+        for step in steps_to_add:
+            additionnal_duration = additionnal_duration + step.duration_s
         # if the steps are added at the beginning of the journey
         if start_end:
             nb_steps_to_add = len(steps_to_add)
@@ -76,12 +85,14 @@ class journey:
             for step_old in self.steps:
                 step_old.id = step_old.id + nb_steps_to_add
             self.steps = steps_to_add + self.steps
+            self.departure_date = self.departure_date - timedelta(seconds=additionnal_duration)
         # if the steps are at the end of the journey
         else :
             nb_existing_steps = len(self.steps)
             for step_new in steps_to_add:
                 step_new.id = step_new.id + nb_existing_steps
             self.steps = self.steps + steps_to_add
+            self.arrival_date = self.arrival_date + timedelta(seconds=additionnal_duration)
 
 
 class journey_step:
@@ -199,6 +210,33 @@ class point:
                                 tooltip=self.address).add_to(_map)
         return _map
 
+
+class ThreadComputeJourney(Thread):
+    """
+    The class helps parallelize the computation journeys
+    """
+    def __init__(self, api, query):
+        Thread.__init__(self)
+        self._return = None
+        self.api = api
+        self.query = query
+
+    def run(self):
+        if self.api == 'OuiBus':
+            journeys = OuiBus.main(self.query)
+        elif self.api == 'Skyscanner':
+            journeys = Skyscanner.main(self.query)
+        elif self.api == 'Trainline':
+            journeys = Trainline.main(self.query)
+        elif self.api == 'ORS':
+            journeys = ORS.ORS_query_directions(self.query)
+        else:
+            journeys = list()
+        self._return = journeys
+
+    def join(self):
+        Thread.join(self)
+        return self._return
 """
 BASIC FUNCTIONS
 """
