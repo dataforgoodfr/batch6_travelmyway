@@ -5,6 +5,7 @@ import copy
 import zipfile
 import os
 import io
+from humanfriendly import format_timespan
 from time import perf_counter
 from app import TMW as tmw
 from datetime import datetime as dt, timedelta
@@ -13,7 +14,6 @@ from app import tmw_api_keys
 import time
 from app import constants
 from app.co2_emissions import calculate_co2_emissions
-
 
 pd.set_option('display.max_columns', 999)
 pd.set_option('display.width', 1000)
@@ -102,7 +102,7 @@ def skyscanner_journeys(df_response, _id=0):
         # We add a waiting period at the airport of 2 hours
         step = tmw.journey_step(i,
                                 _type=constants.TYPE_WAIT,
-                                label='',
+                                label=f'Arrive at the airport {format_timespan(_AIRPORT_WAITING_PERIOD)} before departure',
                                 distance_m=0,
                                 duration_s=_AIRPORT_WAITING_PERIOD,
                                 price_EUR=[0],
@@ -125,7 +125,7 @@ def skyscanner_journeys(df_response, _id=0):
 
             step = tmw.journey_step(i,
                                     _type=constants.TYPE_PLANE,
-                                    label='',
+                                    label=f'Flight {leg.FlightNumber_rich} to {leg.Name}',
                                     distance_m=leg.distance_step,
                                     duration_s=leg.Duration_seg * 60,
                                     price_EUR=[leg.price_step],
@@ -147,7 +147,7 @@ def skyscanner_journeys(df_response, _id=0):
                 #           dt.strptime(leg['ArrivalDateTime'], '%Y-%m-%dT%H:%M:%S')
                 step = tmw.journey_step(i,
                                         _type=constants.TYPE_TRANSFER,
-                                        label='',
+                                        label=f'Transfer at {leg.Name}',
                                         distance_m=0,
                                         duration_s=(leg.next_departure - leg.ArrivalDateTime).seconds,
                                         price_EUR=[0],

@@ -5,6 +5,8 @@ from loguru import logger
 import copy
 import json
 import io
+from threading import Thread
+from humanfriendly import format_timespan
 from app import TMW as tmw
 from datetime import datetime as dt, timedelta
 from geopy.distance import distance
@@ -209,7 +211,7 @@ def trainline_journeys(df_response, _id=0):
         # We add a waiting period at the station of 15 minutes
         step = tmw.journey_step(i,
                                 _type=constants.TYPE_WAIT,
-                                label='',
+                                label=f'Arrive at the station {format_timespan(_STATION_WAITING_PERIOD)} before departure',
                                 distance_m=0,
                                 duration_s=_STATION_WAITING_PERIOD,
                                 price_EUR=[0],
@@ -233,7 +235,7 @@ def trainline_journeys(df_response, _id=0):
                               constants.DEFAULT_NB_PASSENGERS * local_distance_m
             step = tmw.journey_step(i,
                                     _type=local_transportation_type,
-                                    label='',
+                                    label=f'{leg.trip_code} to {leg.name_arrival_seg}',
                                     distance_m=local_distance_m,
                                     duration_s=(leg.arrival_date_seg - leg.departure_date_seg).seconds,
                                     price_EUR=[leg.price_step],
@@ -253,7 +255,7 @@ def trainline_journeys(df_response, _id=0):
             if not pd.isna(leg.next_departure):
                 step = tmw.journey_step(i,
                                         _type=constants.TYPE_TRANSFER,
-                                        label='',
+                                        label=f'Transfer at {leg.name_arrival_seg}',
                                         distance_m=0,
                                         duration_s=(leg['next_departure'] - leg['arrival_date_seg']).seconds,
                                         price_EUR=[0],

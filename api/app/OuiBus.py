@@ -3,6 +3,7 @@ import pandas as pd
 import json
 from datetime import datetime as dt, timedelta
 import copy
+from humanfriendly import format_timespan
 from loguru import logger
 from geopy.distance import distance
 from app import tmw_api_keys
@@ -230,7 +231,7 @@ def ouibus_journeys(df_response, _id=0):
         # We add a waiting period at the station of 15 minutes
         step = tmw.journey_step(i,
                                 _type=constants.TYPE_WAIT,
-                                label='',
+                                label=f'Arrive at the station {format_timespan(_STATION_WAITING_PERIOD)} before departure',
                                 distance_m=0,
                                 duration_s=_STATION_WAITING_PERIOD,
                                 price_EUR=[0],
@@ -251,7 +252,7 @@ def ouibus_journeys(df_response, _id=0):
                               constants.DEFAULT_NB_PASSENGERS*local_distance_m
             step = tmw.journey_step(i,
                                     _type=constants.TYPE_COACH,
-                                    label='',
+                                    label=f'Coach OuiBus {leg.bus_number} to {leg.short_name_destination_seg}',
                                     distance_m=local_distance_m,
                                     duration_s=(leg.arrival_seg - leg.departure_seg).seconds,
                                     price_EUR=[leg.price_step],
@@ -271,7 +272,7 @@ def ouibus_journeys(df_response, _id=0):
             if not pd.isna(leg.next_departure):
                 step = tmw.journey_step(i,
                                         _type=constants.TYPE_TRANSFER,
-                                        label='',
+                                        label=f'Transfer at {leg.short_name_destination_seg}',
                                         distance_m=distance(leg.geoloc_destination_seg,leg.next_geoloc).m,
                                         duration_s=(leg['next_departure'] - leg['arrival_seg']).seconds,
                                         price_EUR=[0],
