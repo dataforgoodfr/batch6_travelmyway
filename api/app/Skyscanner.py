@@ -223,6 +223,7 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
         'content-type': "application/x-www-form-urlencoded"
     }
     # First POST request to create session
+    time_before_call = time.perf_counter()
     response = requests.request("POST", url, data=payload, headers=headers)
     # get session key
     # In some cases the API won't give a session key "Location" so we try and except
@@ -297,11 +298,13 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
         # When the response actually contains something we call the fromat fonction to
         #    regroup all the necessary infos
         if len(response.json()['Legs']) > 0:
+            logger.info(f'Skyscanner API call duration {time.perf_counter() - time_before_call}')
             return format_skyscanner_response(response.json(), date_departure, one_way, details)
         else :
             # The API could not find any trips
             logger.info('out because no legs. Looked like this though')
             logger.info(response.json())
+            logger.info(f'Skyscanner API call duration {time.perf_counter() - time_before_call}')
             return pd.DataFrame()
     except:
         # Should not happen
@@ -456,10 +459,11 @@ def get_airports_from_geo_locs(geoloc_dep, geoloc_arrival):
         if not we add the next closest airport and if this 2nd city is big enough we keep only the two first
         else we look at the 3rd and final airports
     """
-    stops_tmp = _AIRPORT_DF.copy()
+    stops_tmp = _AIRPORT_DF[(((_AIRPORT_DF.latitude-geoloc_dep[0])**2<0.6) & ((_AIRPORT_DF.longitude-geoloc_dep[1])**2<0.6)) |
+                              (((_AIRPORT_DF.latitude-geoloc_arrival[0])**2<0.6) & ((_AIRPORT_DF.longitude-geoloc_arrival[1])**2<0.6))].copy()
     # compute proxi for distance (since we only need to compare no need to take the earth curve into account...)
-    stops_tmp['distance_dep'] = stops_tmp.apply(lambda x: distance(geoloc_dep, x.geoloc).m, axis=1)
-    stops_tmp['distance_arrival'] = stops_tmp.apply(lambda x: distance(geoloc_arrival, x.geoloc).m, axis=1)
+    stops_tmp['distance_dep'] = stops_tmp.apply(lambda x: (x.latitude - geoloc_dep[0]) ** 2 + (x.longitude - geoloc_dep[1]) ** 2, axis=1)
+    stops_tmp['distance_arrival'] = stops_tmp.apply(lambda x: (x.latitude - geoloc_arrival[0]) ** 2 + (x.longitude - geoloc_arrival[1]) ** 2, axis=1)
 
     # We get the 2 closest airports for departure and arrival + 1 one if they are small
     airport_list = dict()

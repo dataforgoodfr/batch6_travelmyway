@@ -1,7 +1,7 @@
 import requests
 import pandas as pd
 from loguru import logger
-
+import time
 import copy
 import json
 import io
@@ -16,6 +16,27 @@ from app import co2_emissions
 # Get all train and bus station from trainline thanks to https://github.com/tducret/trainline-python
 _STATIONS_CSV_FILE = "https://raw.githubusercontent.com/trainline-eu/stations/master/stations.csv"
 _STATION_WAITING_PERIOD = constants.WAITING_PERIOD_TRAINLINE
+
+
+class ThreadApiCall(Thread):
+    """
+    The class helps parallelize the computation journeys
+    """
+    def __init__(self, departure_date, origin_id, destination_id, passengers):
+        Thread.__init__(self)
+        self._return = None
+        self.departure_date = departure_date
+        self.origin_id = origin_id
+        self.destination_id = destination_id
+        self.passengers = passengers
+
+    def run(self):
+        journeys = search_for_all_fares(self.departure_date, self.origin_id, self.destination_id, self.passengers)
+        self._return = journeys
+
+    def join(self):
+        Thread.join(self)
+        return self._return
 
 
 def update_trainline_stops(url=_STATIONS_CSV_FILE):
@@ -91,11 +112,12 @@ def search_for_all_fares(date, origin_id, destination_id, passengers, include_bu
             }
     post_data = json.dumps(data)
 
+    time_before_call = time.perf_counter()
     # logger.info('juste avant le post trainline')
     ret = session.post(url="https://www.trainline.eu/api/v5_1/search",
                        headers=headers,
                        data=post_data)
-    # print(f'API call duration {dt.now() - tmp}')
+    logger.info(f'Trainline API call duration {time.perf_counter() - time_before_call}')
     # logger.info('avant le format')
 
     return format_trainline_response(ret.json(), segment_details=segment_details)
@@ -106,6 +128,7 @@ def format_trainline_response(rep_json, segment_details=True, only_sellable=True
     """
     Format complicated json with information flighing around into a clear dataframe
     """
+    time_start_format = time.perf_counter()
     # logger.info(rep_json)
     # get folders (aggregated outbound or inbound trip)
     folders = pd.DataFrame.from_dict(rep_json['folders'])
@@ -169,6 +192,7 @@ def format_trainline_response(rep_json, segment_details=True, only_sellable=True
         folders_rich['departure_date_seg'] = pd.to_datetime(folders_rich.departure_date_seg)
         folders_rich['arrival_date_seg'] = pd.to_datetime(folders_rich.arrival_date_seg)
 
+        logger.info(f'Trainline format {time.perf_counter() - time_start_format}')
         return folders_rich[
             ['id_global', 'departure_date', 'arrival_date', 'nb_segments', 'name', 'country', 'latitude', 'longitude',
              'name_arrival', 'country_arrival', 'latitude_arrival', 'longitude_arrival',
@@ -337,10 +361,13 @@ def get_stops_from_geo_locs(geoloc_dep, geoloc_arrival, max_distance_km=50):
         This function takes in the departure and arrival points of the TMW journey and returns
             the 3 closest stations within 50 km
     """
-    stops_tmp = _ALL_STATIONS.copy()
-    # compute proxi for distance (since we only need to compare no need to take the earth curve into account...)
-    stops_tmp['distance_dep'] = stops_tmp.apply(lambda x: distance(geoloc_dep, x.geoloc).m, axis =1)
-    stops_tmp['distance_arrival'] = stops_tmp.apply(lambda x: distance(geoloc_arrival, x.geoloc).m, axis =1)
+    # We filter only on the closest stops to have a smaller df (thus better perfs)
+    stops_tmp = _ALL_STATIONS[(((_ALL_STATIONS.latitude-geoloc_dep[0])**2<0.6) & ((_ALL_STATIONS.longitude-geoloc_dep[1])**2<0.6)) |
+                              (((_ALL_STATIONS.latitude-geoloc_arrival[0])**2<0.6) & ((_ALL_STATIONS.longitude-geoloc_arrival[1])**2<0.6))]\
+                            [['geoloc', 'parent_station_id']].copy()
+
+    stops_tmp['distance_dep'] = stops_tmp.apply(lambda x: (geoloc_dep[0]- x.geoloc[0])**2 + (geoloc_dep[1]- x.geoloc[1])**2, axis =1)
+    stops_tmp['distance_arrival'] = stops_tmp.apply(lambda x: (geoloc_arrival[0]- x.geoloc[0])**2 + (geoloc_arrival[1]- x.geoloc[1])**2, axis =1)
 
     # We get all station within approx 55 km (<=> 0.5 of distance proxi)
     parent_station_id_list = {}
@@ -360,25 +387,41 @@ def main(query):
     # print(f'{len(stops.departure)} departure parent station found ')
     # print(f'{len(stops.arrival)} arrival parent station found ')
     detail_response = pd.DataFrame()
+    thread_list = list()
+    i = 0
+    if len(str(query.departure_date)) == 10:
+        # no hour specified we call the API for 8 AM
+        query.departure_date = str(query.departure_date) + 'T08:00:00'
     for departure_station_id in stops['departure']:
         for arrival_station_id in stops['arrival']:
             logger.info(f'call Trainline API from {departure_station_id}, to {arrival_station_id }')
+            thread_list.append(ThreadApiCall(query.departure_date, int(departure_station_id),
+                                             int(arrival_station_id), _PASSENGER))
+            thread_list[i].start()
+            i = i+1
+            # new_departure_date = pd.to_datetime(query.departure_date) + timedelta(hours=4)
+            # thread_list.append(ThreadApiCall(new_departure_date, int(departure_station_id),
+            #                                  int(arrival_station_id), _PASSENGER))
+            # thread_list[i].start()
+            # i = i + 1
             # Trainline only responds for the next few hours, so we make 2 API calls
-            first_hours_fares = search_for_all_fares(query.departure_date, int(departure_station_id),
-                                                                          int(arrival_station_id), _PASSENGER,
-                                                                          segment_details=True)
-            new_departure_date = pd.to_datetime(query.departure_date) + timedelta(hours=4)
-            second_hours_fares = search_for_all_fares(str(new_departure_date), int(departure_station_id),
-                                                                          int(arrival_station_id), _PASSENGER,
-                                                                          segment_details=True)
-            detail_response = detail_response.append(first_hours_fares).append(second_hours_fares)
+            # first_hours_fares = search_for_all_fares(query.departure_date, int(departure_station_id),
+            #                                                               int(arrival_station_id), _PASSENGER,
+            #                                                               segment_details=True)
+            # second_hours_fares = search_for_all_fares(str(new_departure_date), int(departure_station_id),
+            #                                                               int(arrival_station_id), _PASSENGER,
+            #                                                               segment_details=True)
+            # detail_response = detail_response.append(first_hours_fares).append(second_hours_fares)
 
+    for api_call in thread_list:
+        fares = api_call.join()
+        detail_response = detail_response.append(fares)
+    time_after_API_call = time.perf_counter()
     # Make sure we don't have duplicates (due to the 2 calls)
     detail_response = detail_response.drop_duplicates(['departure_date', 'arrival_date', 'nb_segments', 'name', 'latitude', 'longitude',
                                                        'name_arrival', 'cents', 'departure_date_seg', 'name_depart_seg', 'arrival_date_seg', 'name_arrival_seg',
                                                        'train_name', 'train_number'])
     all_journeys = trainline_journeys(detail_response)
-
     # for i in all_journeys:
     #     print(i.to_json())
 

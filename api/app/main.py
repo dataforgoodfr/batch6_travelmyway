@@ -2,7 +2,7 @@ from loguru import logger
 # from app import Trainline
 # from app import Skyscanner
 # from app import OuiBus
-from app import Navitia
+# from app import Navitia
 # from app import ORS
 from app import constants
 from app import TMW as tmw
@@ -87,50 +87,64 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
     #logger.info(f'ors good')
 
     # Création des threads
-    thread_trainline = tmw.ThreadComputeJourney(api='Trainline', query=query_start_finish)
     thread_skyscanner = tmw.ThreadComputeJourney(api='Skyscanner', query=query_start_finish)
     thread_ouibus = tmw.ThreadComputeJourney(api='OuiBus', query=query_start_finish)
+    thread_trainline = tmw.ThreadComputeJourney(api='Trainline', query=query_start_finish)
     thread_ors = tmw.ThreadComputeJourney(api='ORS', query=query_start_finish)
 
     # Lancement des threads
-    thread_trainline.start()
     thread_skyscanner.start()
     thread_ouibus.start()
+    thread_trainline.start()
     thread_ors.start()
 
     # Attendre que les threads se terminent
-    trainline_journeys, time_trainline = thread_trainline.join()
     skyscanner_journeys, time_skyscanner = thread_skyscanner.join()
     ouibus_journeys, time_ouibus = thread_ouibus.join()
+    trainline_journeys, time_trainline = thread_trainline.join()
     ors_journey, time_or = thread_ors.join()
 
     all_journeys = trainline_journeys + skyscanner_journeys + ouibus_journeys
-    # all_journeys = skyscanner_journeys
+    # all_journeys = trainline_journeys
     i = 0
-    # logger.info(f'we found {len(all_journeys)} inter urban journeys')
+    logger.info(f'we found {len(all_journeys)} inter urban journeys')
+    logger.info(f'it took for computing the interrurban journeys {perf_counter() - t1_start}')
     # Then we call Navitia to get the beginning and the end of the journey
     # Let's record all the query we need to send to Navitia, deduplicate them and call NAvitia only once
+    tmp = perf_counter()
     navitia_queries = list()
     for interurban_journey in all_journeys:
         interurban_journey.id = i
         i = i + 1
         navitia_queries.append(tmw.query(0, geoloc_dep, interurban_journey.steps[0].departure_point, departure_date))
         navitia_queries.append(tmw.query(0, interurban_journey.steps[-1].arrival_point, geoloc_arrival, departure_date))
+    logger.info(f'time to prepare navitia queries {perf_counter() - tmp}')
+
+    nav_start = perf_counter()
 
     # Call Navitia only once each time:
     navitia_dict = {}
     navitia_query_done = list()
+    navitia_thread_list = list()
+    i = 0
     for navitia_query in navitia_queries:
         if navitia_query.to_json() in navitia_query_done:
             # if query has been called then skip
             continue
         # logger.info(f'call Navitia with {navitia_query.to_json()}')
-        navitia_steps = Navitia.navitia_query_directions(navitia_query)
-        navitia_dict[str(navitia_query.to_json())] = navitia_steps
+        navitia_thread_list.append(tmw.ThreadNavitiaCall(navitia_query))
+        navitia_thread_list[i].start()
+        i = i + 1
+        # navitia_steps = Navitia.navitia_query_directions(navitia_query)
+        # navitia_dict[str(navitia_query.to_json())] = navitia_steps
         navitia_query_done.append(navitia_query.to_json())
         # navitia_dict_list.append(navitia_dict)
 
-    nav_start = perf_counter()
+    for navitia_thread in navitia_thread_list:
+        navitia_steps, navitia_query = navitia_thread.join()
+        navitia_dict[str(navitia_query.to_json())] = navitia_steps
+
+    logger.info(f'navitia_dict is {navitia_dict}')
     # Reconsiliate between navitia queries and interrurban journeys
     for interurban_journey in all_journeys:
         # Get start to station query
@@ -143,7 +157,7 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
             interurban_journey.add_steps(station_to_arrival_steps[0].steps, start_end=False)
             interurban_journey.update()
         else:
-            # logger.info(f'remove category {interurban_journey.category}')
+            logger.info(f'remove category {interurban_journey.category}')
             # logger.info(f'remove price {interurban_journey.total_price_EUR}')#
             # logger.info(f'remove price {interurban_journey.total_distance}')
             # logger.info(f'remove legs nb {len(interurban_journey.steps)}')
@@ -152,7 +166,7 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
             all_journeys.remove(interurban_journey)
     nav_stop = perf_counter()
 
-    all_journeys.append(ors_journey)
+    # all_journeys.append(ors_journey)
 
     # Filter most relevant Journeys
     filtered_journeys = filter_and_label_relevant_journey(all_journeys)
@@ -168,11 +182,10 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
 
 
 # This function only serves to run locally in debug
-def main(departure_date='2019-12-18T10:00:00', geoloc_dep=[48.85,2.35], geoloc_arrival=[43.5994, 1.4337]):
+def main(departure_date='2019-12-28T10:00:00', geoloc_dep=[48.85,2.35], geoloc_arrival=[43.5994, 1.4337]):
     all_trips = compute_complete_journey(departure_date, geoloc_dep, geoloc_arrival)
 
     for i in all_trips:
-        print(type(i))
         print(i)
         #print(i.to_json())
 
