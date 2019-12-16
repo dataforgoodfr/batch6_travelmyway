@@ -7,7 +7,7 @@ from threading import Thread
 from app import Trainline
 from app import Skyscanner
 from app import OuiBus
-# from app import Navitia
+from app import Navitia
 from app import ORS
 import time
 
@@ -249,6 +249,27 @@ class ThreadComputeJourney(Thread):
     def join(self):
         Thread.join(self)
         return self._return, self.run_time
+
+
+class ThreadNavitiaCall(Thread):
+    """
+    The class helps parallelize the computation journeys
+    """
+    def __init__(self, query):
+        Thread.__init__(self)
+        self._return = None
+        self.query = query
+        self.run_time = 0
+
+    def run(self):
+        journeys = Navitia.navitia_query_directions(self.query)
+        self._return = journeys
+
+    def join(self):
+        Thread.join(self)
+        return self._return, self.query
+
+
 """
 BASIC FUNCTIONS
 """
