@@ -10,6 +10,7 @@ from app import tmw_api_keys
 from app import TMW as tmw
 from app import constants
 from app.co2_emissions import calculate_co2_emissions
+import time
 
 pd.set_option('display.max_columns', 999)
 pd.set_option('display.width', 1000)
@@ -131,12 +132,14 @@ def get_stops_from_geo_loc(geoloc_origin, geoloc_destination, max_distance_km=50
         This function takes in the departure and arrival points of the TMW journey and returns
             the 3 closest stations within 50 km
     """
-    stops_tmp = _ALL_BUS_STOPS.copy()
+    stops_tmp = _ALL_BUS_STOPS[(((_ALL_BUS_STOPS.latitude-geoloc_origin[0])**2<0.6) & ((_ALL_BUS_STOPS.longitude-geoloc_origin[1])**2<0.6)) |
+                              (((_ALL_BUS_STOPS.latitude-geoloc_destination[0])**2<0.6) & ((_ALL_BUS_STOPS.longitude-geoloc_destination[1])**2<0.6))].copy()
+
     # compute proxi for distance (since we only need to compare no need to take the earth curve into account...)
     stops_tmp['distance_origin'] = stops_tmp.apply(
-        lambda x: distance([x.latitude, x.longitude], geoloc_origin).m, axis=1)
+        lambda x: (x.latitude - geoloc_origin[0])**2 + (x.longitude-geoloc_origin[1])**2, axis=1)
     stops_tmp['distance_destination'] = stops_tmp.apply(
-        lambda x: distance([x.latitude, x.longitude], geoloc_destination).m, axis=1)
+        lambda x: (x.latitude - geoloc_destination[0])**2 + (x.longitude-geoloc_destination[1])**2, axis=1)
     # We get the 5 closests station (within max_distance_km)
     stations = {}
     stations['origin'] = stops_tmp[stops_tmp.distance_origin < max_distance_km * 1000].sort_values(by='distance_origin').head(5)
