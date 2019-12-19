@@ -391,11 +391,11 @@ def main(query):
     i = 0
     if len(str(query.departure_date)) == 10:
         # no hour specified we call the API for 8 AM
-        query.departure_date = str(query.departure_date) + 'T08:00:00'
+        departure_date_train = str(query.departure_date) + 'T08:00:00'
     for departure_station_id in stops['departure']:
         for arrival_station_id in stops['arrival']:
             logger.info(f'call Trainline API from {departure_station_id}, to {arrival_station_id }')
-            thread_list.append(ThreadApiCall(query.departure_date, int(departure_station_id),
+            thread_list.append(ThreadApiCall(departure_date_train, int(departure_station_id),
                                              int(arrival_station_id), _PASSENGER))
             thread_list[i].start()
             i = i+1

@@ -166,7 +166,7 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
             all_journeys.remove(interurban_journey)
     nav_stop = perf_counter()
 
-    # all_journeys.append(ors_journey)
+    all_journeys.append(ors_journey)
 
     # Filter most relevant Journeys
     filtered_journeys = filter_and_label_relevant_journey(all_journeys)

@@ -194,7 +194,7 @@ def get_price_from_itineraries(x):
         return min(prices)
 
 
-def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, plane_jouney_found=True, details=False, try_number=1):
+def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, plane_jouney_found=False, details=False, try_number=1):
     """
     Here we actually call the Skyscanner API with all the relevant information asked by the user
     First we create a session with the first POST request, then we read the results with the 2nd GET request
