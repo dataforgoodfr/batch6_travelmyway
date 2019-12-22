@@ -93,6 +93,9 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
     tmp = perf_counter()
     navitia_queries = list()
     for interurban_journey in all_journeys:
+        # if fake journey no call to Navitia
+        if not interurban_journey.is_real_journey:
+            continue
         interurban_journey.id = i
         i = i + 1
         navitia_queries.append(tmw.query(0, geoloc_dep, interurban_journey.steps[0].departure_point, departure_date))
@@ -126,6 +129,9 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
     logger.info(f'navitia_dict is {navitia_dict}')
     # Reconsiliate between navitia queries and interrurban journeys
     for interurban_journey in all_journeys:
+        # if fake journey no call to Navitia
+        if not interurban_journey.is_real_journey:
+            continue
         # Get start to station query
         start_to_station_query = tmw.query(0, geoloc_dep, interurban_journey.steps[0].departure_point, departure_date)
         start_to_station_steps = navitia_dict[str(start_to_station_query.to_json())]
