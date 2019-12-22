@@ -1,4 +1,5 @@
 import requests
+import os
 import pandas as pd
 import json
 from datetime import datetime as dt, timedelta
@@ -60,8 +61,39 @@ def pandas_explode(df, column_to_explode):
     return return_df
 
 
+# Get all bus stations available for OuiBus from csv
+def load_ouibus_database():
+    """
+    Load the airport database used to do smart calls to Skyscanner API.
+    This DB can be reconstructed thanks to the recompute_airport_database (see end of file)
+    """
+    path = os.path.join(os.getcwd(), 'data/ouibus_stops.csv')  #
+    try:
+        logger.info(path)
+        bus_station_list = pd.read_csv(path)
+        bus_station_list['geoloc'] = bus_station_list.apply(lambda x: [x.latitude, x.longitude], axis=1)
+        logger.info('load the ouibus station db. Here is a random example :')
+        logger.info(bus_station_list.sample(1))
+        return bus_station_list
+    except:
+        try:
+            logger.info(os.path.join(os.getcwd(), 'api/app/', 'data/ouibus_stops.csv'))
+            bus_station_list = pd.read_csv(os.path.join(os.getcwd(), 'api/app/', 'data/ouibus_stops.csv'), sep=',')
+            bus_station_list['geoloc'] = bus_station_list.apply(lambda x: [x.latitude, x.longitude], axis=1)
+            logger.info('load the ouibus station db. Here is a random example :')
+            logger.info(bus_station_list.sample(1))
+            return bus_station_list
+        except:
+            logger.info(os.path.join(os.getcwd(), 'app/', 'data/ouibus_stops.csv'))
+            bus_station_list = pd.read_csv(os.path.join(os.getcwd(), 'app/', 'data/ouibus_stops.csv'))
+            bus_station_list['geoloc'] = bus_station_list.apply(lambda x: [x.latitude, x.longitude], axis=1)
+            logger.info('load the ouibus station db. Here is a random example :')
+            logger.info(bus_station_list.sample(1))
+            return bus_station_list
+
+
 # Get all bus stations available for OuiBus / Needs to be updated regularly
-def update_stop_list():
+def update_stop_list(retry=0):
     """
         This function loads the DB containing all the Ouibus station we can call
         It calls the OuiBus API, and formats the response into a DF containing
@@ -72,13 +104,21 @@ def update_stop_list():
     }
     # Get v1 stops (all actual stops)
     response = requests.get('https://api.idbus.com/v1/stops', headers=headers)
+    logger.info(f'response ouibis v1 status {response.status_code}')
+    if (response.status_code == 500) & (retry<5):
+        logger.warning(f'retry ouibus stop nb {retry+1}')
+        return update_stop_list(retry=retry+1)
     stops_df_v1 = pd.DataFrame.from_dict(response.json()['stops'])
     # Get v2 stops (with meta_station like "Paris - All stations")
     response = requests.get('https://api.idbus.com/v2/stops', headers=headers)
+    logger.info(f'response ouibis v2 status {response.status_code}')
+    if (response.status_code == 500) & (retry<5):
+        logger.warning(f'retry ouibus stop nb {retry+1}')
+        return update_stop_list(retry=retry+1)
     stops_df_v2 = pd.DataFrame.from_dict(response.json()['stops'])
 
     # Enrich stops list with meta gare infos
-    stops_rich = pandas_explode(stops_df_v2[['id', 'stops']], 'stops')
+    stops_rich = pandas_explode(stops_df_v2[['id', 'stops', '_carrier_id']], 'stops')
     stops_rich['stops'] = stops_rich.apply(lambda x: x.stops['id'], axis=1)
     stops_rich = stops_df_v1.merge(stops_rich, how='left', left_on='id', right_on='stops',
                                    suffixes=('', '_meta_gare'))
@@ -87,6 +127,7 @@ def update_stop_list():
     stops_rich['geoloc'] = stops_rich.apply(lambda x: [x.latitude, x.longitude], axis=1)
 
     logger.info(f'{stops_rich.shape[0]} Ouibus stops were found, here is an example:\n {stops_rich.sample()}')
+    stops_rich.to_csv('app/data/ouibus_stops.csv')
     return stops_rich
 
 
@@ -114,7 +155,7 @@ def search_for_all_fares(date, origin_id, destination_id, passengers):
     try:
         trips = pd.DataFrame.from_dict(r.json()['trips'])
     except:
-        return None
+        return pd.DataFrame()
     trips['departure'] = pd.to_datetime(trips.departure)
     # Let's filter out trips where departure date is before requested time
     trips = trips[trips.departure >= str(date)]
@@ -189,12 +230,20 @@ def compute_trips(date, passengers, geoloc_origin, geoloc_destination):
     # Call API for all scenarios
     all_trips = pd.DataFrame()
     for origin_meta_gare_id in origin_meta_gare_ids:
+        origin_slug = all_stops['origin'][all_stops['origin'].id_meta_gare==origin_meta_gare_id]._carrier_id_meta_gare.unique()[0]
+        if pd.isna(origin_slug):
+            origin_slug = all_stops['origin'][all_stops['origin'].id_meta_gare==origin_meta_gare_id]._carrier_id.unique()[0]
         for destination_meta_gare_id in destination_meta_gare_ids:
-            logger.info(f'call OuiBus API from {origin_meta_gare_id} to {destination_meta_gare_id}')
+            destination_slug = all_stops['destination'][all_stops['destination'].id_meta_gare == destination_meta_gare_id]._carrier_id_meta_gare.unique()[0]
+            if pd.isna(destination_slug):
+                destination_slug = all_stops['destination'][all_stops['destination'].id_meta_gare == destination_meta_gare_id]._carrier_id.unique()[0]
+            logger.info(f'call OuiBus API from {origin_slug} to {destination_slug}')
             # make sure we don't call the API for a useless trip
             if origin_meta_gare_id != destination_meta_gare_id:
-                all_trips = all_trips.append(
-                    search_for_all_fares(date, origin_meta_gare_id, destination_meta_gare_id, passengers))
+                all_fares = search_for_all_fares(date, origin_meta_gare_id, destination_meta_gare_id, passengers)
+                all_fares['origin_slug'] = origin_slug
+                all_fares['destination_slug'] = destination_slug
+                all_trips = all_trips.append(all_fares)
 
     # Enrich with stops info
     if all_trips.empty:
@@ -229,6 +278,9 @@ def ouibus_journeys(df_response, _id=0):
         itinerary['next_departure'] = itinerary.departure_seg.shift(-1)
         itinerary['next_stop_name'] = itinerary.short_name_origin_seg.shift(1)
         itinerary['next_geoloc'] = itinerary.geoloc_origin_seg.shift(-1)
+        # get the slugs to create the booking link
+        origin_slug = itinerary.origin_slug.unique()[0]
+        destination_slug = itinerary.destination_slug.unique()[0]
         i = _id
         lst_sections = list()
         # We add a waiting period at the station of 15 minutes
@@ -288,8 +340,9 @@ def ouibus_journeys(df_response, _id=0):
                                         )
                 lst_sections.append(step)
                 i = i + 1
-
-        journey_ouibus = tmw.journey(_id, steps=lst_sections)
+        departure_date_formated = dt.strptime(str(lst_sections[0].departure_date)[0:15], '%Y-%m-%d %H:%M').strftime('%Y-%m-%d %H:00')
+        journey_ouibus = tmw.journey(_id, steps=lst_sections,
+                                     booking_link=f'https://fr.ouibus.com/recherche?origin={origin_slug}&destination={destination_slug}&outboundDate={departure_date_formated}')
         # Add category
         category_journey = list()
         for step in journey_ouibus.steps:
@@ -318,8 +371,9 @@ def main(query):
     else:
         return ouibus_journeys(all_trips)
 
+
 # When the server starts it will load the station DB
-_ALL_BUS_STOPS = update_stop_list()
+_ALL_BUS_STOPS = load_ouibus_database()
 # This is the regular format for regular passenger information to be sent to OuiBus API
 _PASSENGER = [{"id": 1,  "age": 30,  "price_currency": "EUR"}]
 
