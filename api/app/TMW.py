@@ -12,7 +12,7 @@ from app import ORS
 import time
 
 class journey:
-    def __init__(self, _id, departure_date=dt.now(), arrival_date=dt.now(), steps=[]):
+    def __init__(self, _id, departure_date=dt.now(), arrival_date=dt.now(), booking_link='', steps=[]):
         self.id = _id
         self.category = '' # car/train/plane
         self.label = []
@@ -26,6 +26,8 @@ class journey:
         self.arrival_point = [0, 0]
         self.departure_date = departure_date
         self.arrival_date  = arrival_date
+        self.is_real_journey = True
+        self.booking_link = booking_link
         self.steps = steps
 
     def add(self, steps=[]):
@@ -44,6 +46,8 @@ class journey:
                 'departure_date': str(self.departure_date),
                 'arrival_date': str(self.arrival_date),
                 'total_gCO2': self.total_gCO2,
+                'is_real_journey': self.is_real_journey,
+                'booking_link': self.booking_link,
                 'journey_steps': [step.to_json() for step in self.steps]
                 }
         return json
