@@ -22,7 +22,6 @@ pd.set_option('display.width', 1000)
 _AIRPORT_WAITING_PERIOD = constants.WAITING_PERIOD_AIRPORT
 
 
-
 def load_airport_database():
     """
     Load the airport database used to do smart calls to Skyscanner API.
@@ -51,6 +50,7 @@ def load_airport_database():
             logger.info('load the skyscanner airport db. Here is a random example :')
             logger.info(airport_list.sample(1))
             return airport_list
+
 
 # When the server starts it logs the airport db (only once)
 _AIRPORT_DF = load_airport_database()
@@ -98,6 +98,10 @@ def skyscanner_journeys(df_response, _id=0):
         itinerary['next_departure'] = itinerary.DepartureDateTime.shift(-1)
         itinerary['next_stop_name'] = itinerary.Name_origin_seg.shift(-1)
         itinerary['next_geoloc'] = itinerary.geoloc_origin_seg.shift(-1)
+        # get the slugs to create the booking link
+        departure_slug = itinerary.departure_slug.unique()[0].lower()[0:4]
+        arrival_slug = itinerary.arrival_slug.unique()[0].lower()[0:4]
+
         lst_sections = list()
         # We add a waiting period at the airport of 2 hours
         step = tmw.journey_step(i,
@@ -163,9 +167,14 @@ def skyscanner_journeys(df_response, _id=0):
                 lst_sections.append(step)
                 i = i+1
 
+        departure_date_formated = dt.strptime(lst_sections[0].departure_date[0:10], '%Y-%m-%d')
+        departure_date_formated = str(departure_date_formated.year)[2:4]+\
+                                  ('0'+str(departure_date_formated.month))[-2:]+\
+                                  ('0'+str(departure_date_formated.day))[-2:]
         journey_sky = tmw.journey(_id, steps=lst_sections,
                                     departure_date= lst_sections[0].departure_date,
-                                    arrival_date= lst_sections[-1].arrival_date)
+                                    arrival_date= lst_sections[-1].arrival_date,
+                                    booking_link=f'https://www.skyscanner.fr/transport/vols/{departure_slug}/{arrival_slug}/{departure_date_formated}/')
         # journey_sky = tmw.journey(_id, steps=lst_sections)
         # Add category
         category_journey = list()
@@ -311,7 +320,8 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
         return pd.DataFrame()
 
 
-def format_skyscanner_response(rep_json, date_departure, one_way=False, segment_details=True, only_with_price=True):
+def format_skyscanner_response(rep_json, date_departure, departure, arrival,
+                               one_way=False, segment_details=True, only_with_price=True):
     """
     Format complicated json with information flighing around into a clear dataframe
     See Skyscanner API doc for more info https://skyscanner.github.io/slate/?_ga=1.104705984.172843296.1446781555#polling-the-results
@@ -397,10 +407,13 @@ def format_skyscanner_response(rep_json, date_departure, one_way=False, segment_
         segments_rich['FlightNumber_rich'] = segments_rich['Code_carrier'] + segments_rich['FlightNumber']
         # Recreate the order of the segment (not working so far)
         # segments_rich['seg_rank'] = segments_rich.groupby('Id_global')["value"].rank("dense", ascending=False)
+        # add the departure and arrival city-sky for booking_link
+        segments_rich['departure_slug'] = departure
+        segments_rich['arrival_slug'] = arrival
         # keep only the relevant information
         return segments_rich[
             ['itinerary_id', 'Arrival', 'Departure', 'Code', 'geoloc', 'Code_destination',
-             'geoloc_destination', 'Duration_global',
+             'geoloc_destination', 'Duration_global', 'departure_slug', 'arrival_slug',
              'Id_global', 'PriceTotal_AR', 'nb_segments', 'ArrivalDateTime', 'DepartureDateTime',
              'Duration_seg', 'JourneyMode_seg', 'Name_origin_seg', 'Name',
              'Id', 'Id_seg', 'Code_origin_seg', 'geoloc_origin_seg', 'Code_destination_seg', 'geoloc_destination_seg',
