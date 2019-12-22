@@ -1,9 +1,4 @@
 from loguru import logger
-# from app import Trainline
-# from app import Skyscanner
-# from app import OuiBus
-# from app import Navitia
-# from app import ORS
 from app import constants
 from app import TMW as tmw
 from time import perf_counter
@@ -69,22 +64,6 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
     # Start the stopwatch / counter
     t1_start = perf_counter()
     # First we look for intercities journeys
-    #train_start = perf_counter()
-    #trainline_journeys = Trainline.main(query_start_finish)
-    #train_stop = perf_counter()
-    #logger.info(f'found {len(trainline_journeys)} trainline journeys')
-    #sky_start = perf_counter()
-    #skyscanner_journeys = Skyscanner.main(query_start_finish)
-    #sky_stop = perf_counter()
-    #logger.info(f'found {len(skyscanner_journeys)} skyscanner journeys')
-    #ouibus_start = perf_counter()
-    #ouibus_journeys = OuiBus.main(query_start_finish)
-    #ouibus_stop = perf_counter()
-    #logger.info(f'found {len(ouibus_journeys)} ouibus journeys')
-    #ors_start = perf_counter()
-    #ors_journey = ORS.ORS_query_directions(query_start_finish)
-    #ors_stop = perf_counter()
-    #logger.info(f'ors good')
 
     # Création des threads
     thread_skyscanner = tmw.ThreadComputeJourney(api='Skyscanner', query=query_start_finish)
