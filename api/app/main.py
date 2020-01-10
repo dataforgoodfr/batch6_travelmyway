@@ -1,9 +1,4 @@
 from loguru import logger
-# from app import Trainline
-# from app import Skyscanner
-# from app import OuiBus
-# from app import Navitia
-# from app import ORS
 from app import constants
 from app import TMW as tmw
 from time import perf_counter
@@ -69,22 +64,6 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
     # Start the stopwatch / counter
     t1_start = perf_counter()
     # First we look for intercities journeys
-    #train_start = perf_counter()
-    #trainline_journeys = Trainline.main(query_start_finish)
-    #train_stop = perf_counter()
-    #logger.info(f'found {len(trainline_journeys)} trainline journeys')
-    #sky_start = perf_counter()
-    #skyscanner_journeys = Skyscanner.main(query_start_finish)
-    #sky_stop = perf_counter()
-    #logger.info(f'found {len(skyscanner_journeys)} skyscanner journeys')
-    #ouibus_start = perf_counter()
-    #ouibus_journeys = OuiBus.main(query_start_finish)
-    #ouibus_stop = perf_counter()
-    #logger.info(f'found {len(ouibus_journeys)} ouibus journeys')
-    #ors_start = perf_counter()
-    #ors_journey = ORS.ORS_query_directions(query_start_finish)
-    #ors_stop = perf_counter()
-    #logger.info(f'ors good')
 
     # Création des threads
     thread_skyscanner = tmw.ThreadComputeJourney(api='Skyscanner', query=query_start_finish)
@@ -114,6 +93,9 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
     tmp = perf_counter()
     navitia_queries = list()
     for interurban_journey in all_journeys:
+        # if fake journey no call to Navitia
+        if not interurban_journey.is_real_journey:
+            continue
         interurban_journey.id = i
         i = i + 1
         navitia_queries.append(tmw.query(0, geoloc_dep, interurban_journey.steps[0].departure_point, departure_date))
@@ -147,6 +129,9 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
     logger.info(f'navitia_dict is {navitia_dict}')
     # Reconsiliate between navitia queries and interrurban journeys
     for interurban_journey in all_journeys:
+        # if fake journey no call to Navitia
+        if not interurban_journey.is_real_journey:
+            continue
         # Get start to station query
         start_to_station_query = tmw.query(0, geoloc_dep, interurban_journey.steps[0].departure_point, departure_date)
         start_to_station_steps = navitia_dict[str(start_to_station_query.to_json())]
@@ -166,7 +151,7 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
             all_journeys.remove(interurban_journey)
     nav_stop = perf_counter()
 
-    # all_journeys.append(ors_journey)
+    all_journeys.append(ors_journey)
 
     # Filter most relevant Journeys
     filtered_journeys = filter_and_label_relevant_journey(all_journeys)

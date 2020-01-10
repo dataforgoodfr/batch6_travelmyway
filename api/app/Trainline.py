@@ -22,16 +22,20 @@ class ThreadApiCall(Thread):
     """
     The class helps parallelize the computation journeys
     """
-    def __init__(self, departure_date, origin_id, destination_id, passengers):
+    def __init__(self, departure_date, origin_id, destination_id, origin_slug, destination_slug, passengers):
         Thread.__init__(self)
         self._return = None
         self.departure_date = departure_date
         self.origin_id = origin_id
         self.destination_id = destination_id
+        self.origin_slug = origin_slug
+        self.destination_slug = destination_slug
         self.passengers = passengers
 
     def run(self):
         journeys = search_for_all_fares(self.departure_date, self.origin_id, self.destination_id, self.passengers)
+        journeys['origin_slug'] = self.origin_slug
+        journeys['destination_slug'] = self.destination_slug
         self._return = journeys
 
     def join(self):
@@ -43,12 +47,15 @@ def update_trainline_stops(url=_STATIONS_CSV_FILE):
     """
         This function loads the DB containing all the Trainline station we can call
         It's downloaded from a github account and enriched to match TMW's needs
+        We return the list of all stops used for the API call
+            + the list of corresponding slugs to build the booking URL
      """
     csv_content = requests.get(url).content
-    all_stops = pd.read_csv(io.StringIO(csv_content.decode('utf-8')),
+    all_stops_raw = pd.read_csv(io.StringIO(csv_content.decode('utf-8')),
                             sep=';', index_col=0, low_memory=False)
     # filter on station with parnt_station_id (that we can call the API with)
-    all_stops = all_stops[~pd.isna(all_stops.parent_station_id)]
+    all_stops = all_stops_raw[~pd.isna(all_stops_raw.parent_station_id)]
+    parent_stations =  all_stops_raw[pd.isna(all_stops_raw.parent_station_id)]
     # Group info on bus or train
     all_stops['is_bus_station'] = all_stops.apply(
         lambda x: (x.busbud_is_enabled == 't') or (x.flixbus_is_enabled == 't'), axis=1)
@@ -70,11 +77,13 @@ def update_trainline_stops(url=_STATIONS_CSV_FILE):
     all_stops['geoloc_good'] = all_stops.apply(lambda x: not(pd.isna(x.geoloc[0]) or pd.isna(x.geoloc[1])),axis=1)
     all_stops = all_stops[all_stops.geoloc_good]
     logger.info(f'{all_stops.shape[0]} stops were found. Here is an example:\n {all_stops.sample()}')
-    return all_stops
+    # keep only relevant columns for parent station as well
+    parent_stations = parent_stations[['slug']]
+    return all_stops, parent_stations
 
 
 # When the server starts we load the station DB
-_ALL_STATIONS = update_trainline_stops()
+_ALL_STATIONS, _PARENT_STATION_SLUGS = update_trainline_stops()
 # This is the regular format for regular passenger information to be sent to Trainline API
 _PASSENGER = [{'id': '3c29a998-270e-416b-83f0-936b606638da', 'age': 39,
                'cards': [], 'label': '3c29a998-270e-416b-83f0-936b606638da'}]
@@ -224,12 +233,15 @@ def trainline_journeys(df_response, _id=0):
     # all itineraries :
     # print(f'nb itinerary : {df_response.id_global.nunique()}')
     for itinerary_id in df_response.id_global.unique():
-
         itinerary = df_response[df_response.id_global == itinerary_id].reset_index(drop=True)
         # boolean to know whether and when there will be a transfer after the leg
         itinerary['next_departure'] = itinerary.departure_date_seg.shift(-1)
         itinerary['next_stop_name'] = itinerary.name_depart_seg.shift(-1)
         itinerary['next_geoloc'] = itinerary.geoloc_depart_seg.shift(-1)
+        # get the slugs to create the booking link
+        origin_slug = itinerary.origin_slug.unique()[0]
+        destination_slug = itinerary.destination_slug.unique()[0]
+
         i = _id
         lst_sections = list()
         # We add a waiting period at the station of 15 minutes
@@ -294,10 +306,11 @@ def trainline_journeys(df_response, _id=0):
                                         )
                 lst_sections.append(step)
                 i = i + 1
-
+        departure_date_formated = dt.strptime(str(lst_sections[0].departure_date)[0:15], '%Y-%m-%d %H:%M').strftime('%Y-%m-%d %H:00')
         journey_train = tmw.journey(_id, steps=lst_sections,
                                     departure_date= lst_sections[0].departure_date,
-                                    arrival_date= lst_sections[-1].arrival_date)
+                                    arrival_date= lst_sections[-1].arrival_date,
+                                    booking_link=f'https://www.trainline.fr/search/{origin_slug}/{destination_slug}/{departure_date_formated}')
         # Add category
         category_journey = list()
         for step in journey_train.steps:
@@ -389,29 +402,20 @@ def main(query):
     detail_response = pd.DataFrame()
     thread_list = list()
     i = 0
-    if len(str(query.departure_date)) == 10:
+    departure_date_train = query.departure_date
+    if len(str(departure_date_train)) == 10:
         # no hour specified we call the API for 8 AM
-        query.departure_date = str(query.departure_date) + 'T08:00:00'
+        departure_date_train = str(query.departure_date) + 'T08:00:00'
     for departure_station_id in stops['departure']:
+        departure_slug = _PARENT_STATION_SLUGS.loc[departure_station_id,:].slug
         for arrival_station_id in stops['arrival']:
-            logger.info(f'call Trainline API from {departure_station_id}, to {arrival_station_id }')
-            thread_list.append(ThreadApiCall(query.departure_date, int(departure_station_id),
-                                             int(arrival_station_id), _PASSENGER))
+            arrival_slug = _PARENT_STATION_SLUGS.loc[arrival_station_id, :].slug
+            logger.info(f'call Trainline API from {departure_slug}, to {arrival_slug }')
+            thread_list.append(ThreadApiCall(departure_date_train, int(departure_station_id),
+                                             int(arrival_station_id), departure_slug, arrival_slug ,
+                                             _PASSENGER))
             thread_list[i].start()
             i = i+1
-            # new_departure_date = pd.to_datetime(query.departure_date) + timedelta(hours=4)
-            # thread_list.append(ThreadApiCall(new_departure_date, int(departure_station_id),
-            #                                  int(arrival_station_id), _PASSENGER))
-            # thread_list[i].start()
-            # i = i + 1
-            # Trainline only responds for the next few hours, so we make 2 API calls
-            # first_hours_fares = search_for_all_fares(query.departure_date, int(departure_station_id),
-            #                                                               int(arrival_station_id), _PASSENGER,
-            #                                                               segment_details=True)
-            # second_hours_fares = search_for_all_fares(str(new_departure_date), int(departure_station_id),
-            #                                                               int(arrival_station_id), _PASSENGER,
-            #                                                               segment_details=True)
-            # detail_response = detail_response.append(first_hours_fares).append(second_hours_fares)
 
     for api_call in thread_list:
         fares = api_call.join()
