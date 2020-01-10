@@ -6,10 +6,10 @@ import Home from './Home'
 import ResultListContainer from './resultList/ResultListContainer'
 import DetailedResultContainer from './detailedResult/DetailedResultContainer'
 import './style/main.scss'
-import journey from '../fakeJourney'
 
 const App = () => {
-  const [results, setResults] = useState(journey)
+  const [results, setResults] = useState({journeys:[], isLoading: false})
+
   return (
     <>
       <Router>

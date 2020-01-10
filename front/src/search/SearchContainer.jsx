@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import fakeJourney from '../../fakeJourney'
 import AutocompleteAddress from './AutocompleteAddress'
 import DatePicker from './DatePicker'
 import { getJourney } from '../services/api'
@@ -23,8 +22,10 @@ const SearchContainer = ({ setResults }) => {
   }
 
   const submitForm = async () => {
-    const formatedDate = startDate.toLocaleDateString()
-
+    // moment('startDate', startDate)
+    const formatedDate = startDate.toISOString()
+    //const formatedDate2 = moment(formatedDate, 'YYYY-MM-DD HH:mm')
+    
     const result = await getJourney(
       departureCoordinates.lat,
       departureCoordinates.lng,
@@ -35,6 +36,7 @@ const SearchContainer = ({ setResults }) => {
 
     console.log('⬇⬇⬇ call API ⬇⬇⬇')
     console.log('----------- beep boop', result.data)
+    setResults({journeys: [result.data], isLoading: false})
   }
 
   return (
