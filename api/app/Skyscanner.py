@@ -278,7 +278,6 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
 
     response = requests.request("GET", url, headers=headers, params=querystring)
     logger.info(f'status code of get is {response.status_code}')
-    logger.info(response.json())
     # logger.info(response.content)
     if response.status_code == 429:
         if try_number<max_retries:

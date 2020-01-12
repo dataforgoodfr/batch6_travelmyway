@@ -5,6 +5,7 @@ from flask_json import json_response
 from app import main
 from loguru import logger
 import json
+import datetime
 
 app = flask.Flask(__name__)
 app.config["DEBUG"] = True
@@ -56,7 +57,7 @@ def compute_journey():
     end = request.args.get('to')
     date_time = request.args.get('start')
     if start is None or end is None or date_time is None:
-        return "<h1>KO</h1><p>Missing mandatory parameters</p>", 500
+        return "<h1>KO</h1><p>Missing mandatory parameters</p>", 400
     logger.info(f'end {end}, start {start} date {date_time}')
     try:
         end = end.split(',')
@@ -68,15 +69,19 @@ def compute_journey():
         logger.info(f'start {start}')
         logger.info(f'end {end}')
     except:
-        return "<h1>KO</h1><p>geoloc format not recognized</p>"
+        return "<h1>KO</h1><p>geoloc format not recognized</p>", 400
     try:
         result = main.compute_complete_journey(date_time, start, end)
         js = json.dumps(result)
         resp = flask.Response(js, status=200, mimetype='application/json')
         resp.headers['Access-Control-Allow-Origin'] = '*'
         return resp
-    except Exception:
-        return "Server error", 500
+    except Exception as err:
+        error_message = str(err)
+        return error_message, 400
+    except:
+        return 'Servor Error', 500
+
 
 
 @app.route('/fake_journey', methods=['GET'])
@@ -109,9 +114,6 @@ def compute_fake_journey():
         resp = flask.Response(js, status=200, mimetype='application/json')
         resp.headers['Access-Control-Allow-Origin'] = '*'
         return resp
-        # logger.info(result)
-        #return response
-        # return json_response(status_=200, data_=result)
     except Exception:
         return "Server error", 500
 

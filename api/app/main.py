@@ -2,6 +2,7 @@ from loguru import logger
 from app import constants
 from app import TMW as tmw
 from time import perf_counter
+import datetime
 
 """
 Build a multi-modal journey
@@ -58,7 +59,12 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
         to make sure we call Navitia only once for each query
     Finally we call the filter function to choose which journeys we keep
     """
-    # Let's create the start to finish query
+    # We only accept date up to 9 month in the future
+    date_within_range = (datetime.datetime.today() + datetime.timedelta(days=9 * 30)) \
+                            > datetime.datetime.strptime(departure_date,"%Y-%m-%dT%H:%M:%S.000Z")
+    if not date_within_range:
+        raise Exception('Date out of range')
+        # Let's create the start to finish query
     query_start_finish = tmw.query(0, geoloc_dep, geoloc_arrival, departure_date)
     # logger.info(f'query_start_finish{query_start_finish.to_json()}')
     # Start the stopwatch / counter
@@ -82,6 +88,13 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
     ouibus_journeys, time_ouibus = thread_ouibus.join()
     trainline_journeys, time_trainline = thread_trainline.join()
     ors_journey, time_or = thread_ors.join()
+
+    if skyscanner_journeys is None:
+        skyscanner_journeys = list()
+    if trainline_journeys is None:
+        trainline_journeys = list()
+    if ouibus_journeys is None:
+        ouibus_journeys = list()
 
     all_journeys = trainline_journeys + skyscanner_journeys + ouibus_journeys
     # all_journeys = trainline_journeys
@@ -151,11 +164,15 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
             all_journeys.remove(interurban_journey)
     nav_stop = perf_counter()
 
-    all_journeys.append(ors_journey)
+    if ors_journey is not None:
+        all_journeys.append(ors_journey)
 
-    # Filter most relevant Journeys
-    filtered_journeys = filter_and_label_relevant_journey(all_journeys)
-    filtered_journeys = [filtered_journey.to_json() for filtered_journey in filtered_journeys]
+    if len(all_journeys)>0:
+        # Filter most relevant Journeys
+        filtered_journeys = filter_and_label_relevant_journey(all_journeys)
+        filtered_journeys = [filtered_journey.to_json() for filtered_journey in filtered_journeys]
+    else :
+        filtered_journeys = all_journeys
     t1_stop = perf_counter()
     logger.info(f'Elapsed time during computation: {t1_stop-t1_start} s')
     logger.info(f'including: {time_trainline}s for trainline ')
@@ -167,7 +184,7 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
 
 
 # This function only serves to run locally in debug
-def main(departure_date='2019-12-28T10:00:00', geoloc_dep=[48.85,2.35], geoloc_arrival=[43.5994, 1.4337]):
+def main(departure_date='2020-11-28T10:00:00.000Z', geoloc_dep=[14.6559,120.9], geoloc_arrival=[43.6043, 1.44199]):
     all_trips = compute_complete_journey(departure_date, geoloc_dep, geoloc_arrival)
 
     for i in all_trips:
