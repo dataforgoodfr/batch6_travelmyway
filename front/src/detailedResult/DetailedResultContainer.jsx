@@ -1,29 +1,17 @@
 import React from 'react'
-import Header from '../components/Header'
 import { Link } from 'react-router-dom'
+import { Grid } from 'semantic-ui-react'
 import DetailedResultCard from './DetailedResultCard'
 import SmallResultCard from './SmallResultCard'
 import EcologyCard from './EcologyCard'
 import StepsCard from './StepsCard'
+import Header from '../components/Header'
 import SearchBarRecap from './SearchBarRecap'
-import { Grid } from 'semantic-ui-react'
 import { getCO2InKg } from '../journey.utils'
-import { getJourney } from '../services/api'
 
-const getData = async () => {
-  try {
-    const { data } = await getJourney()
-    console.log(data)
-    return data
-  } catch (e) {
-    console.log(e)
-  }
-}
 
-const DetailedResultContainer = ({ selectedJourney, results }) => {
+const DetailedResultContainer = ({ selectedJourney, journeys }) => {
   const totalCO2InKg = getCO2InKg(selectedJourney.total_gCO2)
-  console.log('⬇⬇⬇ call API ⬇⬇⬇')
-  const stuff = getData()
   return (
     <div className="page-detailed-results">
       <Header />
@@ -44,7 +32,7 @@ const DetailedResultContainer = ({ selectedJourney, results }) => {
               <EcologyCard />
               <p>Les autres trajets écologiques</p>
               <br />
-              {results.map(item => (
+              {journeys.map(item => (
                 <Link key={item.id} to={`/results/${item.id}`}>
                   <SmallResultCard result={item} />
                 </Link>

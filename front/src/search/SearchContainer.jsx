@@ -1,11 +1,10 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import fakeJourney from '../../fakeJourney'
 import AutocompleteAddress from './AutocompleteAddress'
 import DatePicker from './DatePicker'
 import { getJourney } from '../services/api'
 
-const SearchContainer = ({ setResults }) => {
+const SearchContainer = ({ setResults, results }) => {
   const [departureCoordinates, setDepartureCoordinates] = useState({})
   const [arrivalCoordinates, setArrivalCoordinates] = useState({})
   const [startDate, setStartDate] = useState(new Date())
@@ -23,7 +22,9 @@ const SearchContainer = ({ setResults }) => {
   }
 
   const submitForm = async () => {
-    const formatedDate = startDate.toLocaleDateString()
+    const formatedDate = startDate.toISOString()
+      
+    setResults({ ...results, isLoading: true })
 
     const result = await getJourney(
       departureCoordinates.lat,
@@ -32,9 +33,11 @@ const SearchContainer = ({ setResults }) => {
       arrivalCoordinates.lng,
       formatedDate
     )
+      
+    // console.log('⬇⬇⬇ call API ⬇⬇⬇')
+    // console.log('----------- beep boop', result.data)
+    setResults({ journeys: result, isLoading: false })
 
-    console.log('⬇⬇⬇ call API ⬇⬇⬇')
-    console.log('----------- beep boop', result.data)
   }
 
   return (

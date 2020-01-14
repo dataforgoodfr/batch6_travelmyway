@@ -6,10 +6,11 @@ import Home from './Home'
 import ResultListContainer from './resultList/ResultListContainer'
 import DetailedResultContainer from './detailedResult/DetailedResultContainer'
 import './style/main.scss'
-import journey from '../fakeJourney'
 
 const App = () => {
-  const [results, setResults] = useState(journey)
+  const [results, setResults] = useState({journeys:[], isLoading: false})
+  const { journeys } = results;
+
   return (
     <>
       <Router>
@@ -23,8 +24,10 @@ const App = () => {
             path="/results/:journeyId"
             render={({ match }) => {
               const selectedJourneyId = parseInt(match.params.journeyId, 10)
-              const selectedJourney = results.find(result => result.id === selectedJourneyId)
-              return <DetailedResultContainer selectedJourney={selectedJourney} results={results} />
+              const selectedJourney = journeys.find(journey => journey.id === selectedJourneyId)
+              return (
+                <DetailedResultContainer selectedJourney={selectedJourney} journeys={journeys} />
+              )
             }}
           />
           <Route path="/" exact render={() => <Home setResults={setResults} />} />
