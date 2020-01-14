@@ -13,3 +13,5 @@ export const getDurationFromSeconds = secs => {
 }
 
 export const getCO2InKg = CO2InG => `${Math.round((CO2InG / 1000) * 100) / 100} kg`
+
+export const getPrice = journey => `${Math.round(journey.total_price_EUR)} €`

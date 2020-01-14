@@ -4,7 +4,7 @@ import AutocompleteAddress from './AutocompleteAddress'
 import DatePicker from './DatePicker'
 import { getJourney } from '../services/api'
 
-const SearchContainer = ({ setResults }) => {
+const SearchContainer = ({ setResults, results }) => {
   const [departureCoordinates, setDepartureCoordinates] = useState({})
   const [arrivalCoordinates, setArrivalCoordinates] = useState({})
   const [startDate, setStartDate] = useState(new Date())
@@ -22,10 +22,10 @@ const SearchContainer = ({ setResults }) => {
   }
 
   const submitForm = async () => {
-    // moment('startDate', startDate)
     const formatedDate = startDate.toISOString()
-    //const formatedDate2 = moment(formatedDate, 'YYYY-MM-DD HH:mm')
-    
+      
+    setResults({ ...results, isLoading: true })
+
     const result = await getJourney(
       departureCoordinates.lat,
       departureCoordinates.lng,
@@ -33,10 +33,11 @@ const SearchContainer = ({ setResults }) => {
       arrivalCoordinates.lng,
       formatedDate
     )
+      
+    // console.log('⬇⬇⬇ call API ⬇⬇⬇')
+    // console.log('----------- beep boop', result.data)
+    setResults({ journeys: result, isLoading: false })
 
-    console.log('⬇⬇⬇ call API ⬇⬇⬇')
-    console.log('----------- beep boop', result.data)
-    setResults({journeys: [result.data], isLoading: false})
   }
 
   return (

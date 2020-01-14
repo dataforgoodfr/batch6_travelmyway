@@ -9,6 +9,7 @@ import './style/main.scss'
 
 const App = () => {
   const [results, setResults] = useState({journeys:[], isLoading: false})
+  const { journeys } = results;
 
   return (
     <>
@@ -23,8 +24,10 @@ const App = () => {
             path="/results/:journeyId"
             render={({ match }) => {
               const selectedJourneyId = parseInt(match.params.journeyId, 10)
-              const selectedJourney = results.find(result => result.id === selectedJourneyId)
-              return <DetailedResultContainer selectedJourney={selectedJourney} results={results} />
+              const selectedJourney = journeys.find(journey => journey.id === selectedJourneyId)
+              return (
+                <DetailedResultContainer selectedJourney={selectedJourney} journeys={journeys} />
+              )
             }}
           />
           <Route path="/" exact render={() => <Home setResults={setResults} />} />

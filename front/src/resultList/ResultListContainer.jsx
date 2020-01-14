@@ -31,19 +31,17 @@ const ResultListContainer = ({ results, setResults }) => {
   const { journeys, isLoading } = results;
   const sortedJourneys = addEcoComparisonToJourney(sortByCO2(journeys))
 
-  if(isLoading){
-    return <p>Chargement...</p>
-  }
-
   return (
     <div className="page-results">
       <Header />
-      <SearchContainer setResults={setResults} />
+      <SearchContainer setResults={setResults} results={results} />
       <main className="content-wrapper">
-        {journeys.length === 0 
-        ? <p>Désolé, votre recherche n'a abouti à aucun résultat</p>
-        :<h2>Travel my Way vous recommande</h2>
-        }
+        {isLoading && <p>Chargement...</p>}
+        {journeys.length === 0 && !isLoading ? (
+          <p>Désolé, votre recherche n'a abouti à aucun résultat</p>
+        ) : (
+          <h2>Travel my Way vous recommande</h2>
+        )}
         {sortedJourneys.map(journey => (
           <Link key={journey.id} to={`/results/${journey.id}`}>
             <ResultCard journey={journey} />
