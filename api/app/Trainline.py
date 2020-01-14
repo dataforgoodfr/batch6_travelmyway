@@ -238,6 +238,7 @@ def trainline_journeys(df_response, _id=0):
         itinerary['next_departure'] = itinerary.departure_date_seg.shift(-1)
         itinerary['next_stop_name'] = itinerary.name_depart_seg.shift(-1)
         itinerary['next_geoloc'] = itinerary.geoloc_depart_seg.shift(-1)
+        itinerary = itinerary.fillna('')
         # get the slugs to create the booking link
         origin_slug = itinerary.origin_slug.unique()[0]
         destination_slug = itinerary.destination_slug.unique()[0]
