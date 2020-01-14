@@ -1,12 +1,13 @@
 import React from 'react'
 import { Grid } from 'semantic-ui-react'
 import { getDurationFromSeconds, getTimeFromDate } from '../journey.utils'
+import { getPrice } from '../../../batch6_travelmyway/front/src/journey.utils'
 
 const DetailedResultCard = ({ selectedJourney }) => {
   const departureHour = getTimeFromDate(selectedJourney.departure_date)
   const arrivalHour = getTimeFromDate(selectedJourney.arrival_date)
-  const totalPrice = `${selectedJourney.total_price_EUR} €`
   const totalDuration = getDurationFromSeconds(selectedJourney.total_duration)
+  
   return (
     <div className="detailed-result-card">
       <Grid>
@@ -30,7 +31,7 @@ const DetailedResultCard = ({ selectedJourney }) => {
           <Grid.Column width={8} floated="right">
             <div className="flex space-between">
               <div>
-                <p className="text-large">{totalPrice}</p>
+                <p className="text-large">{getPrice(selectedJourney)}</p>
                 <p className="text-info">prix total</p>
               </div>
               <div>

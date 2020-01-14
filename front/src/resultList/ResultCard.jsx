@@ -1,6 +1,6 @@
 import React from 'react'
 import { Icon } from 'semantic-ui-react'
-import { getTimeFromDate, getDurationFromSeconds } from '../journey.utils'
+import { getTimeFromDate, getDurationFromSeconds, getPrice } from '../journey.utils'
 import StepIcon from '../components/StepIcon'
 
 const longDistanceSteps = ['Plane', 'car', 'Coach', 'Train']
@@ -39,7 +39,6 @@ const ResultCard = ({ journey }) => {
   const departureHour = getTimeFromDate(journey.departure_date)
   const arrivalHour = getTimeFromDate(journey.arrival_date)
   const totalDuration = getDurationFromSeconds(journey.total_duration)
-
   return (
     <div className="result-card">
       <div className="result-card-content">
@@ -60,7 +59,7 @@ const ResultCard = ({ journey }) => {
               <p className="text-info small">durée totale</p>
             </div>
             <div className="info-wrapper">
-              <p className="text-large">{journey.total_price_EUR} €</p>
+              <p className="text-large">{getPrice(journey)}</p>
               <p className="text-info small">prix total</p>
             </div>
           </div>
