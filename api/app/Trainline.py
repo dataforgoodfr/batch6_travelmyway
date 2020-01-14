@@ -200,6 +200,8 @@ def format_trainline_response(rep_json, segment_details=True, only_sellable=True
             lambda x: [x.latitude_arrival_seg, x.longitude_arrival_seg], axis=1)
         folders_rich['departure_date_seg'] = pd.to_datetime(folders_rich.departure_date_seg)
         folders_rich['arrival_date_seg'] = pd.to_datetime(folders_rich.arrival_date_seg)
+        # for OUIGO trains
+        folders_rich['train_name'] = folders_rich.train_name.combine_first(folders_rich.carrier)
 
         logger.info(f'Trainline format {time.perf_counter() - time_start_format}')
         return folders_rich[
@@ -229,6 +231,7 @@ def trainline_journeys(df_response, _id=0):
         'train': constants.TYPE_TRAIN,
     }
 
+
     lst_journeys = list()
     # all itineraries :
     # print(f'nb itinerary : {df_response.id_global.nunique()}')
@@ -238,7 +241,7 @@ def trainline_journeys(df_response, _id=0):
         itinerary['next_departure'] = itinerary.departure_date_seg.shift(-1)
         itinerary['next_stop_name'] = itinerary.name_depart_seg.shift(-1)
         itinerary['next_geoloc'] = itinerary.geoloc_depart_seg.shift(-1)
-        itinerary = itinerary.fillna('')
+        itinerary['trip_code'] = itinerary.trip_code.fillna('')
         # get the slugs to create the booking link
         origin_slug = itinerary.origin_slug.unique()[0]
         destination_slug = itinerary.destination_slug.unique()[0]
