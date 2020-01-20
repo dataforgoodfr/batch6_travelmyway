@@ -32,16 +32,16 @@ def filter_and_label_relevant_journey(journey_list):
     type_checks = {constants.CATEGORY_COACH_JOURNEY: 0, constants.CATEGORY_TRAIN_JOURNEY: 0,
                    constants.CATEGORY_PLANE_JOURNEY: 0, constants.CATEGORY_CAR_JOURNEY: 0}
     for journey in journey_list:
-        if (constants.CATEGORY_COACH_JOURNEY in journey.category) & (not type_checks[constants.CATEGORY_COACH_JOURNEY] < 2):
+        if (constants.CATEGORY_COACH_JOURNEY in journey.category) & (type_checks[constants.CATEGORY_COACH_JOURNEY] < 2):
             filtered_journeys.append(journey)
             type_checks[constants.CATEGORY_COACH_JOURNEY] = type_checks[constants.CATEGORY_COACH_JOURNEY] + 1
-        if (constants.CATEGORY_TRAIN_JOURNEY in journey.category) & (not type_checks[constants.CATEGORY_TRAIN_JOURNEY] < 2):
+        if (constants.CATEGORY_TRAIN_JOURNEY in journey.category) & (type_checks[constants.CATEGORY_TRAIN_JOURNEY] < 2):
             filtered_journeys.append(journey)
             type_checks[constants.CATEGORY_TRAIN_JOURNEY] = type_checks[constants.CATEGORY_TRAIN_JOURNEY] + 1
-        if (constants.CATEGORY_PLANE_JOURNEY in journey.category) & (not type_checks[constants.CATEGORY_PLANE_JOURNEY] < 2):
+        if (constants.CATEGORY_PLANE_JOURNEY in journey.category) & (type_checks[constants.CATEGORY_PLANE_JOURNEY] < 2):
             filtered_journeys.append(journey)
             type_checks[constants.CATEGORY_PLANE_JOURNEY] = type_checks[constants.CATEGORY_PLANE_JOURNEY] + 1
-        if (constants.CATEGORY_CAR_JOURNEY in journey.category) & (not type_checks[constants.CATEGORY_CAR_JOURNEY] < 2):
+        if (constants.CATEGORY_CAR_JOURNEY in journey.category) & (type_checks[constants.CATEGORY_CAR_JOURNEY] < 2):
             filtered_journeys.append(journey)
             type_checks[constants.CATEGORY_CAR_JOURNEY] = type_checks[constants.CATEGORY_CAR_JOURNEY] + 1
     logger.info(f'after type check we have {len(filtered_journeys)} journeys in the filter')
@@ -103,7 +103,6 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
     logger.info(f'it took for computing the interrurban journeys {perf_counter() - t1_start}')
     # Then we call Navitia to get the beginning and the end of the journey
     # Let's record all the query we need to send to Navitia, deduplicate them and call NAvitia only once
-    tmp = perf_counter()
     navitia_queries = list()
     for interurban_journey in all_journeys:
         # if fake journey no call to Navitia
@@ -113,7 +112,6 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
         i = i + 1
         navitia_queries.append(tmw.query(0, geoloc_dep, interurban_journey.steps[0].departure_point, departure_date))
         navitia_queries.append(tmw.query(0, interurban_journey.steps[-1].arrival_point, geoloc_arrival, departure_date))
-    logger.info(f'time to prepare navitia queries {perf_counter() - tmp}')
 
     nav_start = perf_counter()
 
@@ -183,12 +181,12 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
     return filtered_journeys
 
 
-# This function only serves to run locally in debug
-def main(departure_date='2020-11-28T10:00:00.000Z', geoloc_dep=[14.6559,120.9], geoloc_arrival=[43.6043, 1.44199]):
+# This function only serves to run locally in debug mode
+def main(departure_date='2020-02-28T10:00:00.000Z', geoloc_dep=[48.2559,2.9], geoloc_arrival=[43.6043, 1.44199]):
     all_trips = compute_complete_journey(departure_date, geoloc_dep, geoloc_arrival)
-
+    logger.info(f'{len(all_trips)} journeys returned')
     for i in all_trips:
-        print(i)
+        logger.info(i)
         #print(i.to_json())
 
 if __name__ == '__main__':

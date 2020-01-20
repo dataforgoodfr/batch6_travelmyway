@@ -8,7 +8,7 @@ import io
 from humanfriendly import format_timespan
 from time import perf_counter
 from app import TMW as tmw
-from datetime import datetime as dt, timedelta
+from datetime import datetime as dt, timedelta, time as dt_time
 from geopy.distance import distance
 from app import tmw_api_keys
 import time
@@ -51,9 +51,36 @@ def load_airport_database():
             logger.info(airport_list.sample(1))
             return airport_list
 
+def load_flightradar_data():
+    """
+    Load the airport database used to do smart calls to Skyscanner API.
+    This DB can be reconstructed thanks to the recompute_airport_database (see end of file)
+    """
+    path = os.path.join(os.getcwd(), 'scrap_flight_number_mieux.csv')  #
+    try:
+        logger.info(path)
+        flight_data = pd.read_csv(path)
+        logger.info('load the flightradar data. Here is a random example :')
+        logger.info(flight_data.sample(1))
+        return flight_data
+    except:
+        try:
+            logger.info(os.path.join(os.getcwd(), 'api/app/', 'data/scrap_flight_number_mieux.csv'))
+            flight_data = pd.read_csv(os.path.join(os.getcwd(), 'api/app/', 'data/scrap_flight_number_mieux.csv'), sep=',')
+            logger.info('load the flightradar data. Here is a random example :')
+            logger.info(flight_data.sample(1))
+            return flight_data
+        except:
+            logger.info(os.path.join(os.getcwd(), 'app/', 'data/scrap_flight_number_mieux.csv'))
+            flight_data = pd.read_csv(os.path.join(os.getcwd(), 'app/', 'data/scrap_flight_number_mieux.csv'))
+            logger.info('load the flightradar data. Here is a random example :')
+            logger.info(flight_data.sample(1))
+            return flight_data
+
 
 # When the server starts it logs the airport db (only once)
 _AIRPORT_DF = load_airport_database()
+_FLIGHTRADAR_DATA = load_flightradar_data()
 
 
 def skyscanner_query_directions(query):
@@ -70,7 +97,7 @@ def skyscanner_query_directions(query):
     date_departure = query['query']['datetime']
     df_response = get_planes_from_skyscanner(date_departure, None, departure_point, arrival_point, details=True)
     if df_response is None or df_response.empty:
-        print('on a rien trouve comme avion')
+        logger.warning('Skyscanner API returned no planes')
         return list()
     else:
         return skyscanner_journeys(df_response)
@@ -88,8 +115,8 @@ def skyscanner_journeys(df_response, _id=0):
     # Compute distance for each leg
     df_response['distance_step'] = df_response.apply(lambda x: distance(x.geoloc_origin_seg,
                                                                         x.geoloc_destination_seg).m, axis=1)
-    print(df_response.itinerary_id.nunique())
     lst_journeys = list()
+
     # all itineraries :
     for itinerary_id in df_response.itinerary_id.unique():
         itinerary = df_response[df_response.itinerary_id == itinerary_id].reset_index(drop=True)
@@ -103,7 +130,7 @@ def skyscanner_journeys(df_response, _id=0):
         arrival_slug = itinerary.arrival_slug.unique()[0].lower()[0:4]
 
         lst_sections = list()
-        # We add a waiting period at the airport of 2 hours
+        # We add a waiting period at the airport of x hours
         step = tmw.journey_step(i,
                                 _type=constants.TYPE_WAIT,
                                 label=f'Arrive at the airport {format_timespan(_AIRPORT_WAITING_PERIOD)} before departure',
@@ -210,7 +237,7 @@ def get_planes_from_skyscanner(date_departure, date_return, departure, arrival, 
     For each of the calls we try to deal with all the potential errors the API could return, most importantly
         we want to wait and try again if the API says it's too busy right now
     """
-    # format date as yyy-mm-dd
+    # format date as yyyy-mm-dd
     date_formated = str(date_departure)[0:10]
     url = "https://skyscanner-skyscanner-flight-search-v1.p.rapidapi.com/apiservices/pricing/v1.0"
     logger.info(f'get_planes try nb {try_number}')
@@ -514,11 +541,114 @@ def create_fake_plane_journey(locations, airport_dep, airport_arrival):
                                               constants.DEFAULT_FUEL, constants.NB_SEATS_TEST,
                                               local_range_km) * \
                       constants.DEFAULT_NB_PASSENGERS * distance_m
-
-    fake_journey = tmw.journey(-1)
+    fake_journey_list = list()
+    fake_journey_step = tmw.journey_step(0,
+                                _type=constants.TYPE_PLANE,
+                                label=f'Arrive at the airport {format_timespan(_AIRPORT_WAITING_PERIOD)} before departure',
+                                distance_m=0,
+                                duration_s=_AIRPORT_WAITING_PERIOD,
+                                price_EUR=[0],
+                                gCO2=local_emissions,
+                                departure_point=geoloc_dep,
+                                arrival_point=geoloc_arrival,
+                                departure_date=dt.now(),
+                                arrival_date=dt.now(),
+                                geojson=[],
+                                )
+    fake_journey_list.append(fake_journey_step)
+    fake_journey = tmw.journey(0, steps=fake_journey_list,
+                                    departure_date= fake_journey_step.departure_date,
+                                    arrival_date= fake_journey_step.arrival_date
+                               )
     fake_journey.total_gCO2 = local_emissions
     fake_journey.is_real_journey = False
     return fake_journey
+
+
+def create_plane_journey_from_flightradar_data(airports, departure_date):
+    """
+    We create a fake plane journey with only the approximate eqCO2 to be used in the computation in the front end
+    :param query:
+    :return: fake_journey
+    """
+    departure_date = dt.strptime(departure_date, '%Y-%m-%dT%H:%M:00.000Z')
+    day_of_week = departure_date.weekday()
+    hour_of_day = departure_date.hour
+    relevant_flights = _FLIGHTRADAR_DATA[_FLIGHTRADAR_DATA.city_sky.isin(airports['departure']) &
+                                         _FLIGHTRADAR_DATA.city_sky_arr.isin(airports['arrival'])]
+    relevant_flights = relevant_flights[relevant_flights.day_of_week == day_of_week]
+    relevant_flights['hour_dep'] = relevant_flights.apply(lambda x: dt.strptime(x.hour_dep, '%H:%M:%S') +
+                                                                    timedelta(hours=1), axis=1)
+    relevant_flights['hour_dep_int'] = relevant_flights.apply(lambda x: x.hour_dep.hour, axis=1)
+    response_flights = pd.DataFrame()
+    for airport_dep in airports['departure']:
+        for airport_arr in airports['arrival']:
+            flights_df = relevant_flights[(relevant_flights.city_sky == airport_dep) &
+                                          (relevant_flights.city_sky_arr == airport_arr) &
+                                          (relevant_flights.hour_dep_int >= hour_of_day)]
+            response_flights = response_flights.append(flights_df)
+    # distance_m = distance(geoloc_dep, geoloc_arrival).m
+    response_flights['local_range_km'] = response_flights.apply(lambda x: get_range_km(x.distance_m), axis=1)
+    response_flights['local_emissions'] = response_flights.apply(lambda x: calculate_co2_emissions(constants.TYPE_PLANE, constants.DEFAULT_CITY,
+                                              constants.DEFAULT_FUEL, constants.NB_SEATS_TEST,
+                                              x.local_range_km) * constants.DEFAULT_NB_PASSENGERS * x.distance_m, axis=1)
+    # merge global departure date and flight time to create flight actual departure datetime
+    response_flights['flight_departure_date'] = response_flights.apply(lambda x: dt.combine(departure_date,
+                                                                                            dt_time(x.hour_dep.hour,
+                                                                                            x.hour_dep.minute)), axis=1)
+    response_flights['flight_arrival_date'] = response_flights.apply(lambda x: x.flight_departure_date +
+                                                         timedelta(seconds=x.flight_time_s), axis=1)
+
+    journey_list = list()
+    for index, flight in response_flights.iterrows():
+        lst_sections = list()
+        # We add a waiting period at the airport of x hours
+        step = tmw.journey_step(0,
+                                _type=constants.TYPE_WAIT,
+                                label=f'Arrive at the airport {format_timespan(_AIRPORT_WAITING_PERIOD)} before departure',
+                                distance_m=0,
+                                duration_s=_AIRPORT_WAITING_PERIOD,
+                                price_EUR=[0],
+                                gCO2=0,
+                                departure_point=[flight.latitude, flight.longitude],
+                                arrival_point=[flight.latitude, flight.longitude],
+                                departure_date=flight.flight_departure_date - timedelta(seconds=_AIRPORT_WAITING_PERIOD),
+                                arrival_date=flight.flight_departure_date,
+                                geojson=[],
+                                )
+        lst_sections.append(step)
+
+        step = tmw.journey_step(1,
+                                _type=constants.TYPE_PLANE,
+                                label=f'Flight {flight.flight_number} to {flight.airport_to_code}',
+                                distance_m=flight.distance_m,
+                                duration_s=flight.flight_time_s,
+                                price_EUR=[0],
+                                gCO2=flight.local_emissions,
+                                departure_point=[flight.latitude, flight.longitude],
+                                arrival_point=[flight.latitude_arr, flight.longitude_arr],
+                                departure_stop_name=flight.airport_from,
+                                arrival_stop_name=flight.airport_to_code,
+                                departure_date=flight.flight_departure_date,
+                                arrival_date=flight.flight_arrival_date,
+                                trip_code=flight.flight_number,
+                                geojson=[],
+                                )
+        lst_sections.append(step)
+        departure_date_formated = dt.strptime(str(lst_sections[0].departure_date)[0:10], '%Y-%m-%d')
+        departure_date_formated = str(departure_date_formated.year)[2:4]+\
+                                  ('0'+str(departure_date_formated.month))[-2:]+\
+                                  ('0'+str(departure_date_formated.day))[-2:]
+
+        journey_flightradar = tmw.journey(0, steps=lst_sections,
+                                    departure_date= lst_sections[0].departure_date,
+                                    arrival_date= lst_sections[-1].arrival_date,
+                                    booking_link=f'https://www.skyscanner.fr/transport/vols/{flight.airport_from}/{flight.airport_to_code}/{departure_date_formated}/')
+        journey_flightradar.category = [constants.TYPE_PLANE]
+        journey_flightradar.update()
+        journey_list.append(journey_flightradar)
+
+    return journey_list
 
 
 def get_range_km(local_distance_m):
@@ -538,7 +668,6 @@ def main(query):
     """
     airports, locations = get_airports_from_geo_locs(query.start_point, query.end_point)
     all_responses = list()
-    some_journey_found = False
     # Let's call the API for every couple cities departure and arrival
     for airport_dep in airports['departure']:
         for airport_arrival in airports['arrival']:
@@ -555,12 +684,12 @@ def main(query):
                     }
             }
             single_route = skyscanner_query_directions(json_query)
-            if single_route is not None:
-                some_journey_found = True
+            if len(single_route)>0:
                 for trip in single_route:
                     all_responses.append(trip)
             else :
                 all_responses.append(create_fake_plane_journey(locations, airport_dep, airport_arrival))
+            all_responses = all_responses + create_plane_journey_from_flightradar_data(airports, query.departure_date)
 
     all_reponses_json = list()
     for journey_sky in all_responses:
