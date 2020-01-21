@@ -571,7 +571,6 @@ def create_plane_journey_from_flightradar_data(airports, departure_date):
     :param query:
     :return: fake_journey
     """
-    departure_date = dt.strptime(departure_date, '%Y-%m-%dT%H:%M:00.000Z')
     day_of_week = departure_date.weekday()
     hour_of_day = departure_date.hour
     relevant_flights = _FLIGHTRADAR_DATA[_FLIGHTRADAR_DATA.city_sky.isin(airports['departure']) &
@@ -608,7 +607,7 @@ def create_plane_journey_from_flightradar_data(airports, departure_date):
                                 label=f'Arrive at the airport {format_timespan(_AIRPORT_WAITING_PERIOD)} before departure',
                                 distance_m=0,
                                 duration_s=_AIRPORT_WAITING_PERIOD,
-                                price_EUR=[0],
+                                price_EUR=[],
                                 gCO2=0,
                                 departure_point=[flight.latitude, flight.longitude],
                                 arrival_point=[flight.latitude, flight.longitude],
@@ -623,7 +622,7 @@ def create_plane_journey_from_flightradar_data(airports, departure_date):
                                 label=f'Flight {flight.flight_number} to {flight.airport_to_code}',
                                 distance_m=flight.distance_m,
                                 duration_s=flight.flight_time_s,
-                                price_EUR=[0],
+                                price_EUR=[],
                                 gCO2=flight.local_emissions,
                                 departure_point=[flight.latitude, flight.longitude],
                                 arrival_point=[flight.latitude_arr, flight.longitude_arr],
@@ -646,6 +645,7 @@ def create_plane_journey_from_flightradar_data(airports, departure_date):
                                     booking_link=f'https://www.skyscanner.fr/transport/vols/{flight.airport_from}/{flight.airport_to_code}/{departure_date_formated}/')
         journey_flightradar.category = [constants.TYPE_PLANE]
         journey_flightradar.update()
+        journey_flightradar.is_real_journey = False
         journey_list.append(journey_flightradar)
 
     return journey_list
@@ -688,8 +688,8 @@ def main(query):
                 for trip in single_route:
                     all_responses.append(trip)
             else :
-                all_responses.append(create_fake_plane_journey(locations, airport_dep, airport_arrival))
-            all_responses = all_responses + create_plane_journey_from_flightradar_data(airports, query.departure_date)
+                # all_responses.append(create_fake_plane_journey(locations, airport_dep, airport_arrival))
+                all_responses = all_responses + create_plane_journey_from_flightradar_data(airports, query.departure_date)
 
     all_reponses_json = list()
     for journey_sky in all_responses:

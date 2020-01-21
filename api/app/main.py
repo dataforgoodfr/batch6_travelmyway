@@ -16,11 +16,12 @@ def filter_and_label_relevant_journey(journey_list):
     we make sure that we have at least one journey of each type (if possible)
     """
     filtered_journeys = list()
+    real_journeys = list(filter(lambda x: x.is_real_journey, journey_list))
     nb_journey_per_label = min(len(journey_list), 3)
     # Label the complete journeys
-    journey_list.sort(key=lambda x: x.total_price_EUR, reverse=False)
-    journey_list[0].label = constants.LABEL_CHEAPEST_JOURNEY
-    filtered_journeys = filtered_journeys + journey_list[0:nb_journey_per_label]
+    real_journeys.sort(key=lambda x: x.total_price_EUR, reverse=False)
+    real_journeys[0].label = constants.LABEL_CHEAPEST_JOURNEY
+    filtered_journeys = filtered_journeys + real_journeys[0:nb_journey_per_label]
     journey_list.sort(key=lambda x: x.total_duration, reverse=False)
     journey_list[0].label = constants.LABEL_FASTEST_JOURNEY
     filtered_journeys = filtered_journeys + journey_list[0:nb_journey_per_label]
@@ -59,9 +60,11 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
         to make sure we call Navitia only once for each query
     Finally we call the filter function to choose which journeys we keep
     """
+    # format date from %Y-%m-%dT%H:%M:%S.xxxZ without considering ms
+    departure_date = datetime.datetime.strptime(str(departure_date)[0:19],"%Y-%m-%dT%H:%M:%S")
     # We only accept date up to 9 month in the future
     date_within_range = (datetime.datetime.today() + datetime.timedelta(days=9 * 30)) \
-                            > datetime.datetime.strptime(departure_date,"%Y-%m-%dT%H:%M:%S.000Z")
+                            > departure_date
     if not date_within_range:
         raise Exception('Date out of range')
         # Let's create the start to finish query
@@ -141,8 +144,8 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
     # Reconsiliate between navitia queries and interrurban journeys
     for interurban_journey in all_journeys:
         # if fake journey no call to Navitia
-        if not interurban_journey.is_real_journey:
-            continue
+        # if not interurban_journey.is_real_journey:
+        #     continue
         # Get start to station query
         start_to_station_query = tmw.query(0, geoloc_dep, interurban_journey.steps[0].departure_point, departure_date)
         start_to_station_steps = navitia_dict[str(start_to_station_query.to_json())]
@@ -182,7 +185,7 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
 
 
 # This function only serves to run locally in debug mode
-def main(departure_date='2020-02-28T10:00:00.000Z', geoloc_dep=[48.2559,2.9], geoloc_arrival=[43.6043, 1.44199]):
+def main(departure_date='2020-02-28T10:00:00.540Z', geoloc_dep=[48.810553, 2.406533], geoloc_arrival=[43.6043, 1.44199]):
     all_trips = compute_complete_journey(departure_date, geoloc_dep, geoloc_arrival)
     logger.info(f'{len(all_trips)} journeys returned')
     for i in all_trips:

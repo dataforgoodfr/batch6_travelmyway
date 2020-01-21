@@ -54,8 +54,9 @@ def update_trainline_stops(url=_STATIONS_CSV_FILE):
     all_stops_raw = pd.read_csv(io.StringIO(csv_content.decode('utf-8')),
                             sep=';', index_col=0, low_memory=False)
     # filter on station with parnt_station_id (that we can call the API with)
-    all_stops = all_stops_raw[~pd.isna(all_stops_raw.parent_station_id)]
-    parent_stations =  all_stops_raw[pd.isna(all_stops_raw.parent_station_id)]
+    all_stops = all_stops_raw[(~pd.isna(all_stops_raw.parent_station_id)) &
+                               (all_stops_raw.is_suggestable == 't')]
+    parent_stations = all_stops_raw[pd.isna(all_stops_raw.parent_station_id)]
     # Group info on bus or train
     all_stops['is_bus_station'] = all_stops.apply(
         lambda x: (x.busbud_is_enabled == 't') or (x.flixbus_is_enabled == 't'), axis=1)
@@ -114,7 +115,7 @@ def search_for_all_fares(date, origin_id, destination_id, passengers, include_bu
     data = {'local_currency': 'EUR',
             'search': {'passengers': passengers,
                        'arrival_station_id': destination_id,
-                       'departure_date': date,
+                       'departure_date': str(date),
                        'departure_station_id': origin_id,
                        'systems': systems
                        }
@@ -382,7 +383,7 @@ def get_stops_from_geo_locs(geoloc_dep, geoloc_arrival, max_distance_km=50):
     # We filter only on the closest stops to have a smaller df (thus better perfs)
     stops_tmp = _ALL_STATIONS[(((_ALL_STATIONS.latitude-geoloc_dep[0])**2<0.6) & ((_ALL_STATIONS.longitude-geoloc_dep[1])**2<0.6)) |
                               (((_ALL_STATIONS.latitude-geoloc_arrival[0])**2<0.6) & ((_ALL_STATIONS.longitude-geoloc_arrival[1])**2<0.6))]\
-                            [['geoloc', 'parent_station_id']].copy()
+                            [['geoloc', 'parent_station_id','slug']].copy()
 
     stops_tmp['distance_dep'] = stops_tmp.apply(lambda x: (geoloc_dep[0]- x.geoloc[0])**2 + (geoloc_dep[1]- x.geoloc[1])**2, axis =1)
     stops_tmp['distance_arrival'] = stops_tmp.apply(lambda x: (geoloc_arrival[0]- x.geoloc[0])**2 + (geoloc_arrival[1]- x.geoloc[1])**2, axis =1)
@@ -390,9 +391,9 @@ def get_stops_from_geo_locs(geoloc_dep, geoloc_arrival, max_distance_km=50):
     # We get all station within approx 55 km (<=> 0.5 of distance proxi)
     parent_station_id_list = {}
     parent_station_id_list['departure'] = stops_tmp[stops_tmp.distance_dep < 1000 * max_distance_km].sort_values(
-                    by='distance_dep').head().parent_station_id.unique()
+                    by='distance_dep').head().drop_duplicates('parent_station_id')
     parent_station_id_list['arrival'] = stops_tmp[stops_tmp.distance_arrival < 1000 * max_distance_km].sort_values(
-        by='distance_arrival').head().parent_station_id.unique()
+        by='distance_arrival').head().drop_duplicates('parent_station_id')
     return parent_station_id_list
 
 
@@ -408,13 +409,21 @@ def main(query):
     thread_list = list()
     i = 0
     departure_date_train = query.departure_date
-    if len(str(departure_date_train)) == 10:
-        # no hour specified we call the API for 8 AM
-        departure_date_train = str(query.departure_date) + 'T08:00:00'
-    for departure_station_id in stops['departure']:
-        departure_slug = _PARENT_STATION_SLUGS.loc[departure_station_id,:].slug
-        for arrival_station_id in stops['arrival']:
-            arrival_slug = _PARENT_STATION_SLUGS.loc[arrival_station_id, :].slug
+    if departure_date_train.hour == 0:
+        # no hour specified we call the API for 6 AM
+        departure_date_train = query.departure_date + timedelta(hours=6)
+    for index_dep, row_dep in stops['departure'].iterrows():
+        departure_station_id = row_dep.parent_station_id
+        try:
+            departure_slug = _PARENT_STATION_SLUGS.loc[departure_station_id,:].slug
+        except:
+            departure_slug = row_dep.slug
+        for index_arr, row_arr in stops['arrival'].iterrows():
+            arrival_station_id = row_arr.parent_station_id
+            try:
+                arrival_slug = _PARENT_STATION_SLUGS.loc[arrival_station_id, :].slug
+            except:
+                arrival_slug = row_arr.slug
             logger.info(f'call Trainline API from {departure_slug}, to {arrival_slug }')
             thread_list.append(ThreadApiCall(departure_date_train, int(departure_station_id),
                                              int(arrival_station_id), departure_slug, arrival_slug ,
@@ -427,7 +436,8 @@ def main(query):
         detail_response = detail_response.append(fares)
     time_after_API_call = time.perf_counter()
     # Make sure we don't have duplicates (due to the 2 calls)
-    detail_response = detail_response.drop_duplicates(['departure_date', 'arrival_date', 'nb_segments', 'name', 'latitude', 'longitude',
+    if not detail_response.empty:
+        detail_response = detail_response.drop_duplicates(['departure_date', 'arrival_date', 'nb_segments', 'name', 'latitude', 'longitude',
                                                        'name_arrival', 'cents', 'departure_date_seg', 'name_depart_seg', 'arrival_date_seg', 'name_arrival_seg',
                                                        'train_name', 'train_number'])
     all_journeys = trainline_journeys(detail_response)
