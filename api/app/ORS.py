@@ -78,10 +78,6 @@ def ORS_query_directions(query, profile='driving-car', toll_price=True, _id=0, g
 
     ors_journey.category = list(set(category_journey))
     ors_journey.update()
-    try:
-        ors_journey.departure_date = dt.strptime(query.departure_date, '%Y-%m-%dT%H:%M:%S.000Z')
-    except:
-        ors_journey.departure_date = dt.strptime(query.departure_date, '%Y-%m-%d')
     ors_journey.arrival_date = ors_journey.departure_date + timedelta(seconds=ors_journey.total_duration)
 
     return ors_journey

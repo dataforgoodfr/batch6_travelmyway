@@ -571,7 +571,6 @@ def create_plane_journey_from_flightradar_data(airports, departure_date):
     :param query:
     :return: fake_journey
     """
-    departure_date = dt.strptime(departure_date, '%Y-%m-%dT%H:%M:00.000Z')
     day_of_week = departure_date.weekday()
     hour_of_day = departure_date.hour
     relevant_flights = _FLIGHTRADAR_DATA[_FLIGHTRADAR_DATA.city_sky.isin(airports['departure']) &

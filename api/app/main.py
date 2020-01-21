@@ -59,9 +59,11 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
         to make sure we call Navitia only once for each query
     Finally we call the filter function to choose which journeys we keep
     """
+    # format date from %Y-%m-%dT%H:%M:%S.xxxZ without considering ms
+    departure_date = datetime.datetime.strptime(str(departure_date)[0:19],"%Y-%m-%dT%H:%M:%S")
     # We only accept date up to 9 month in the future
     date_within_range = (datetime.datetime.today() + datetime.timedelta(days=9 * 30)) \
-                            > datetime.datetime.strptime(departure_date,"%Y-%m-%dT%H:%M:%S.000Z")
+                            > departure_date
     if not date_within_range:
         raise Exception('Date out of range')
         # Let's create the start to finish query
@@ -182,7 +184,7 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
 
 
 # This function only serves to run locally in debug mode
-def main(departure_date='2020-02-28T10:00:00.000Z', geoloc_dep=[48.2559,2.9], geoloc_arrival=[43.6043, 1.44199]):
+def main(departure_date='2020-02-28T10:00:00.000Z', geoloc_dep=[48.810553, 2.406533], geoloc_arrival=[43.6043, 1.44199]):
     all_trips = compute_complete_journey(departure_date, geoloc_dep, geoloc_arrival)
     logger.info(f'{len(all_trips)} journeys returned')
     for i in all_trips:
