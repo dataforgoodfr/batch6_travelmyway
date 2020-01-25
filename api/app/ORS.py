@@ -54,7 +54,7 @@ def ORS_query_directions(query, profile='driving-car', toll_price=True, _id=0, g
                                               constants.DEFAULT_NB_KM) * \
                       constants.DEFAULT_NB_PASSENGERS * local_distance
 
-    step = tmw.journey_step(_id,
+    step = tmw.Journey_step(_id,
                         _type=ORS_profile(profile),
                         label=profile,
                         distance_m=local_distance,
@@ -69,7 +69,7 @@ def ORS_query_directions(query, profile='driving-car', toll_price=True, _id=0, g
     # Add toll price (optional)
     step = ORS_add_toll_price(step) if toll_price else step
 
-    ors_journey = tmw.journey(0, steps=[step])
+    ors_journey = tmw.Journey(0, steps=[step])
     # Add category
     category_journey = list()
     for step in ors_journey.steps:

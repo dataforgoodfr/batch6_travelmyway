@@ -58,23 +58,23 @@ def update_trainline_stops(url=_STATIONS_CSV_FILE):
                                (all_stops_raw.is_suggestable == 't')]
     parent_stations = all_stops_raw[pd.isna(all_stops_raw.parent_station_id)]
     # Group info on bus or train
-    all_stops['is_bus_station'] = all_stops.apply(
-        lambda x: (x.busbud_is_enabled == 't') or (x.flixbus_is_enabled == 't'), axis=1)
-    all_stops['is_train_station'] = all_stops.apply(lambda x: (x.sncf_is_enabled == 't') or (x.idtgv_is_enabled == 't')
-                                                              or (x.db_is_enabled == 't') or (x.cff_is_enabled == 't')
-                                                              or (x.leoexpress_is_enabled == 't') or (
-                                                                          x.obb_is_enabled == 't')
-                                                              or (x.ntv_is_enabled == 't') or (x.hkx_is_enabled == 't')
-                                                              or (x.renfe_is_enabled == 't') or (
-                                                                          x.atoc_is_enabled == 't')
-                                                              or (x.benerail_is_enabled == 't') or (
-                                                                          x.westbahn_is_enabled == 't')
-                                                              or (x.ouigo_is_enabled == 't') or (
-                                                                          x.trenitalia_is_enabled == 't'), axis=1)
+    # all_stops['is_bus_station'] = all_stops.apply(
+    #     lambda x: (x.busbud_is_enabled == 't') or (x.flixbus_is_enabled == 't'), axis=1)
+    # all_stops['is_train_station'] = all_stops.apply(lambda x: (x.sncf_is_enabled == 't') or (x.idtgv_is_enabled == 't')
+    #                                                           or (x.db_is_enabled == 't') or (x.cff_is_enabled == 't')
+    #                                                           or (x.leoexpress_is_enabled == 't') or (
+    #                                                                       x.obb_is_enabled == 't')
+    #                                                           or (x.ntv_is_enabled == 't') or (x.hkx_is_enabled == 't')
+    #                                                           or (x.renfe_is_enabled == 't') or (
+    #                                                                       x.atoc_is_enabled == 't')
+    #                                                           or (x.benerail_is_enabled == 't') or (
+    #                                                                       x.westbahn_is_enabled == 't')
+    #                                                           or (x.ouigo_is_enabled == 't') or (
+    #                                                                       x.trenitalia_is_enabled == 't'), axis=1)
     all_stops['geoloc'] = all_stops.apply(lambda x: [x.latitude, x.longitude], axis=1)
     # Keep only relevant columns
-    all_stops = all_stops[['name', 'slug', 'country', 'latitude', 'longitude', 'geoloc', 'parent_station_id',
-                           'is_bus_station', 'is_train_station']]
+    all_stops = all_stops[['name', 'slug', 'country', 'latitude', 'longitude', 'geoloc', 'parent_station_id']]
+    #                       ,'is_bus_station', 'is_train_station']]
     all_stops['geoloc_good'] = all_stops.apply(lambda x: not(pd.isna(x.geoloc[0]) or pd.isna(x.geoloc[1])),axis=1)
     all_stops = all_stops[all_stops.geoloc_good]
     logger.info(f'{all_stops.shape[0]} stops were found. Here is an example:\n {all_stops.sample()}')
@@ -251,7 +251,7 @@ def trainline_journeys(df_response, _id=0):
         i = _id
         lst_sections = list()
         # We add a waiting period at the station of 15 minutes
-        step = tmw.journey_step(i,
+        step = tmw.Journey_step(i,
                                 _type=constants.TYPE_WAIT,
                                 label=f'Arrive at the station {format_timespan(_STATION_WAITING_PERIOD)} before departure',
                                 distance_m=0,
@@ -275,7 +275,7 @@ def trainline_journeys(df_response, _id=0):
                                                       constants.DEFAULT_FUEL, constants.DEFAULT_NB_SEATS,
                                                       constants.DEFAULT_NB_KM) * \
                               constants.DEFAULT_NB_PASSENGERS * local_distance_m
-            step = tmw.journey_step(i,
+            step = tmw.Journey_step(i,
                                     _type=local_transportation_type,
                                     label=f'{leg.trip_code} to {leg.name_arrival_seg}',
                                     distance_m=local_distance_m,
@@ -295,7 +295,7 @@ def trainline_journeys(df_response, _id=0):
             i = i + 1
             # add transfer steps
             if not pd.isna(leg.next_departure):
-                step = tmw.journey_step(i,
+                step = tmw.Journey_step(i,
                                         _type=constants.TYPE_TRANSFER,
                                         label=f'Transfer at {leg.name_arrival_seg}',
                                         distance_m=0,
@@ -313,7 +313,7 @@ def trainline_journeys(df_response, _id=0):
                 lst_sections.append(step)
                 i = i + 1
         departure_date_formated = dt.strptime(str(lst_sections[0].departure_date)[0:15], '%Y-%m-%d %H:%M').strftime('%Y-%m-%d %H:00')
-        journey_train = tmw.journey(_id, steps=lst_sections,
+        journey_train = tmw.Journey(_id, steps=lst_sections,
                                     departure_date= lst_sections[0].departure_date,
                                     arrival_date= lst_sections[-1].arrival_date,
                                     booking_link=f'https://www.trainline.fr/search/{origin_slug}/{destination_slug}/{departure_date_formated}')

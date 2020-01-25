@@ -284,7 +284,7 @@ def ouibus_journeys(df_response, _id=0):
         i = _id
         lst_sections = list()
         # We add a waiting period at the station of 15 minutes
-        step = tmw.journey_step(i,
+        step = tmw.Journey_step(i,
                                 _type=constants.TYPE_WAIT,
                                 label=f'Arrive at the station {format_timespan(_STATION_WAITING_PERIOD)} before departure',
                                 distance_m=0,
@@ -305,7 +305,7 @@ def ouibus_journeys(df_response, _id=0):
                                                       constants.DEFAULT_FUEL, constants.DEFAULT_NB_SEATS,
                                                       constants.DEFAULT_NB_KM) *\
                               constants.DEFAULT_NB_PASSENGERS*local_distance_m
-            step = tmw.journey_step(i,
+            step = tmw.Journey_step(i,
                                     _type=constants.TYPE_COACH,
                                     label=f'Coach OuiBus {leg.bus_number} to {leg.short_name_destination_seg}',
                                     distance_m=local_distance_m,
@@ -325,7 +325,7 @@ def ouibus_journeys(df_response, _id=0):
             i = i + 1
             # add transfer steps
             if not pd.isna(leg.next_departure):
-                step = tmw.journey_step(i,
+                step = tmw.Journey_step(i,
                                         _type=constants.TYPE_TRANSFER,
                                         label=f'Transfer at {leg.short_name_destination_seg}',
                                         distance_m=distance(leg.geoloc_destination_seg,leg.next_geoloc).m,
@@ -341,7 +341,7 @@ def ouibus_journeys(df_response, _id=0):
                 lst_sections.append(step)
                 i = i + 1
         departure_date_formated = dt.strptime(str(lst_sections[0].departure_date)[0:15], '%Y-%m-%d %H:%M').strftime('%Y-%m-%d %H:00')
-        journey_ouibus = tmw.journey(_id, steps=lst_sections,
+        journey_ouibus = tmw.Journey(_id, steps=lst_sections,
                                      booking_link=f'https://fr.ouibus.com/recherche?origin={origin_slug}&destination={destination_slug}&outboundDate={departure_date_formated}')
         # Add category
         category_journey = list()

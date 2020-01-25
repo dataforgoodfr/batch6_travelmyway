@@ -131,7 +131,7 @@ def skyscanner_journeys(df_response, _id=0):
 
         lst_sections = list()
         # We add a waiting period at the airport of x hours
-        step = tmw.journey_step(i,
+        step = tmw.Journey_step(i,
                                 _type=constants.TYPE_WAIT,
                                 label=f'Arrive at the airport {format_timespan(_AIRPORT_WAITING_PERIOD)} before departure',
                                 distance_m=0,
@@ -154,7 +154,7 @@ def skyscanner_journeys(df_response, _id=0):
                                                       local_range_km) * \
                               constants.DEFAULT_NB_PASSENGERS * local_distance_m
 
-            step = tmw.journey_step(i,
+            step = tmw.Journey_step(i,
                                     _type=constants.TYPE_PLANE,
                                     label=f'Flight {leg.FlightNumber_rich} to {leg.Name}',
                                     distance_m=leg.distance_step,
@@ -176,7 +176,7 @@ def skyscanner_journeys(df_response, _id=0):
             if not pd.isna(leg.next_departure):
                 #duration = dt.strptime(leg['next_departure'], '%Y-%m-%dT%H:%M:%S') - \
                 #           dt.strptime(leg['ArrivalDateTime'], '%Y-%m-%dT%H:%M:%S')
-                step = tmw.journey_step(i,
+                step = tmw.Journey_step(i,
                                         _type=constants.TYPE_TRANSFER,
                                         label=f'Transfer at {leg.Name}',
                                         distance_m=0,
@@ -198,11 +198,11 @@ def skyscanner_journeys(df_response, _id=0):
         departure_date_formated = str(departure_date_formated.year)[2:4]+\
                                   ('0'+str(departure_date_formated.month))[-2:]+\
                                   ('0'+str(departure_date_formated.day))[-2:]
-        journey_sky = tmw.journey(_id, steps=lst_sections,
+        journey_sky = tmw.Journey(_id, steps=lst_sections,
                                     departure_date= lst_sections[0].departure_date,
                                     arrival_date= lst_sections[-1].arrival_date,
                                     booking_link=f'https://www.skyscanner.fr/transport/vols/{departure_slug}/{arrival_slug}/{departure_date_formated}/')
-        # journey_sky = tmw.journey(_id, steps=lst_sections)
+        # journey_sky = tmw.Journey(_id, steps=lst_sections)
         # Add category
         category_journey = list()
         for step in journey_sky.steps:
@@ -542,7 +542,7 @@ def create_fake_plane_journey(locations, airport_dep, airport_arrival):
                                               local_range_km) * \
                       constants.DEFAULT_NB_PASSENGERS * distance_m
     fake_journey_list = list()
-    fake_journey_step = tmw.journey_step(0,
+    fake_journey_step = tmw.Journey_step(0,
                                 _type=constants.TYPE_PLANE,
                                 label=f'Arrive at the airport {format_timespan(_AIRPORT_WAITING_PERIOD)} before departure',
                                 distance_m=0,
@@ -556,7 +556,7 @@ def create_fake_plane_journey(locations, airport_dep, airport_arrival):
                                 geojson=[],
                                 )
     fake_journey_list.append(fake_journey_step)
-    fake_journey = tmw.journey(0, steps=fake_journey_list,
+    fake_journey = tmw.Journey(0, steps=fake_journey_list,
                                     departure_date= fake_journey_step.departure_date,
                                     arrival_date= fake_journey_step.arrival_date
                                )
@@ -602,7 +602,7 @@ def create_plane_journey_from_flightradar_data(airports, departure_date):
     for index, flight in response_flights.iterrows():
         lst_sections = list()
         # We add a waiting period at the airport of x hours
-        step = tmw.journey_step(0,
+        step = tmw.Journey_step(0,
                                 _type=constants.TYPE_WAIT,
                                 label=f'Arrive at the airport {format_timespan(_AIRPORT_WAITING_PERIOD)} before departure',
                                 distance_m=0,
@@ -617,7 +617,7 @@ def create_plane_journey_from_flightradar_data(airports, departure_date):
                                 )
         lst_sections.append(step)
 
-        step = tmw.journey_step(1,
+        step = tmw.Journey_step(1,
                                 _type=constants.TYPE_PLANE,
                                 label=f'Flight {flight.flight_number} to {flight.airport_to_code}',
                                 distance_m=flight.distance_m,
@@ -639,7 +639,7 @@ def create_plane_journey_from_flightradar_data(airports, departure_date):
                                   ('0'+str(departure_date_formated.month))[-2:]+\
                                   ('0'+str(departure_date_formated.day))[-2:]
 
-        journey_flightradar = tmw.journey(0, steps=lst_sections,
+        journey_flightradar = tmw.Journey(0, steps=lst_sections,
                                     departure_date= lst_sections[0].departure_date,
                                     arrival_date= lst_sections[-1].arrival_date,
                                     booking_link=f'https://www.skyscanner.fr/transport/vols/{flight.airport_from}/{flight.airport_to_code}/{departure_date_formated}/')

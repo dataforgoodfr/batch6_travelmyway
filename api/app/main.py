@@ -68,7 +68,7 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
     if not date_within_range:
         raise Exception('Date out of range')
         # Let's create the start to finish query
-    query_start_finish = tmw.query(0, geoloc_dep, geoloc_arrival, departure_date)
+    query_start_finish = tmw.Query(0, geoloc_dep, geoloc_arrival, departure_date)
     # logger.info(f'query_start_finish{query_start_finish.to_json()}')
     # Start the stopwatch / counter
     t1_start = perf_counter()
@@ -113,8 +113,8 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
             continue
         interurban_journey.id = i
         i = i + 1
-        navitia_queries.append(tmw.query(0, geoloc_dep, interurban_journey.steps[0].departure_point, departure_date))
-        navitia_queries.append(tmw.query(0, interurban_journey.steps[-1].arrival_point, geoloc_arrival, departure_date))
+        navitia_queries.append(tmw.Query(0, geoloc_dep, interurban_journey.steps[0].departure_point, departure_date))
+        navitia_queries.append(tmw.Query(0, interurban_journey.steps[-1].arrival_point, geoloc_arrival, departure_date))
 
     nav_start = perf_counter()
 
@@ -147,9 +147,9 @@ def compute_complete_journey(departure_date = '2019-11-28', geoloc_dep=[48.85,2.
         # if not interurban_journey.is_real_journey:
         #     continue
         # Get start to station query
-        start_to_station_query = tmw.query(0, geoloc_dep, interurban_journey.steps[0].departure_point, departure_date)
+        start_to_station_query = tmw.Query(0, geoloc_dep, interurban_journey.steps[0].departure_point, departure_date)
         start_to_station_steps = navitia_dict[str(start_to_station_query.to_json())]
-        station_to_arrival_query = tmw.query(0, interurban_journey.steps[-1].arrival_point, geoloc_arrival, departure_date)
+        station_to_arrival_query = tmw.Query(0, interurban_journey.steps[-1].arrival_point, geoloc_arrival, departure_date)
         station_to_arrival_steps = navitia_dict[str(station_to_arrival_query.to_json())]
         if (start_to_station_steps is not None) & (station_to_arrival_steps is not None):
             interurban_journey.add_steps(start_to_station_steps[0].steps, start_end=True)
