@@ -11,7 +11,7 @@ from app import Navitia
 from app import ORS
 import time
 
-class journey:
+class Journey:
     def __init__(self, _id, departure_date=dt.now(), arrival_date=dt.now(), booking_link='', steps=[]):
         self.id = _id
         self.category = '' # car/train/plane
@@ -100,7 +100,7 @@ class journey:
             self.arrival_date = self.arrival_date + timedelta(seconds=additionnal_duration)
 
 
-class journey_step:
+class Journey_step:
     def __init__(self, _id, _type, label='', distance_m=0, duration_s=0, price_EUR=[0.0], gCO2 = 0, departure_point=[0.0],
                  arrival_point=[0.0], departure_stop_name='', arrival_stop_name='', departure_date=dt.now()
                  , arrival_date=dt.now(), transportation_final_destination='', trip_code='', geojson=''):
@@ -148,7 +148,7 @@ class journey_step:
                                 overlay=True).add_to(_map)
         return _map
 
-class query:
+class Query:
     def __init__(self, _id, start_point, end_point, departure_date=None):
         self.id = _id
         self.start_point = start_point
@@ -156,10 +156,10 @@ class query:
         self.departure_date = departure_date        # example of format (based on navitia): 20191012T063700
 
     def to_json(self):
-        json = {'id':self.id,
-                 'start':self.start_point,
-                 'end':self.end_point,
-                 'departure_date':self.departure_date,
+        json = {'id': self.id,
+                 'start': self.start_point,
+                 'end': self.end_point,
+                 'departure_date': str(self.departure_date),
                 }
         return json
 
@@ -170,7 +170,7 @@ class query:
         _map = self.end_point.plot_navitia_coverage(_map=_map)
         return _map
 
-class point:
+class Point:
     def __init__(self, address, near=False):
         self.address = address
         self.coord = geocode_address(address)  # [lon,lat]

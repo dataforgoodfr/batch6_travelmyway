@@ -183,7 +183,7 @@ def navitia_journeys(json, _id=0):
                 logger.warning('id: {}'.format(i))
                 logger.warning(section)
             i = i + 1
-        lst_journeys.append(tmw.journey(_id, steps=lst_sections))
+        lst_journeys.append(tmw.Journey(_id, steps=lst_sections))
     return lst_journeys
 
 
@@ -208,7 +208,7 @@ def navitia_journeys_sections_type_on_demand(json, _id=0):
         display_information['name'],
         display_information['direction'],
     )
-    step = tmw.journey_step(_id,
+    step = tmw.Journey_step(_id,
                             _type=display_information['network'].lower(),
                             label=label,
                             distance_m=json['geojson']['properties'][0]['length'],
@@ -244,7 +244,7 @@ def navitia_journeys_sections_type_public_transport(json, _id=0):
                                                "unknown public transport")
     # _type = display_information['commercial_mode']
     # _type = unicodedata.normalize('NFD', _type).encode('ascii', 'ignore').lower()
-    step = tmw.journey_step(_id,
+    step = tmw.Journey_step(_id,
                             _type=_type,
                             label=label,
                             distance_m=json['geojson']['properties'][0]['length'],
@@ -274,7 +274,7 @@ def navitia_journeys_sections_type_street_network(json, _id=0):
         json['from']['name'],
         json['to']['name'],
     )
-    step = tmw.journey_step(_id,
+    step = tmw.Journey_step(_id,
                             _type=mode_to_type[mode],
                             label=label,
                             distance_m=json['geojson']['properties'][0]['length'],
@@ -300,7 +300,7 @@ def navitia_journeys_sections_type_transfer(json, _id=0):
         'car': constants.TYPE_CAR,
     }
     label = '{} FROM {} TO {}'.format(mode_to_type[mode], json['from']['name'], json['to']['name'])
-    step = tmw.journey_step(_id,
+    step = tmw.Journey_step(_id,
                             _type=mode_to_type[mode],
                             label=label,
                             distance_m=json['geojson']['properties'][0]['length'],
@@ -319,7 +319,7 @@ def navitia_journeys_sections_type_transfer(json, _id=0):
 
 
 def navitia_journeys_sections_type_waiting(json, _id=0):
-    step = tmw.journey_step(_id,
+    step = tmw.Journey_step(_id,
                             _type=constants.TYPE_WAIT,
                             label='wait',
                             distance_m=0,
