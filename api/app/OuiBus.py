@@ -4,6 +4,7 @@ import pandas as pd
 import json
 from datetime import datetime as dt, timedelta
 import copy
+import math
 from humanfriendly import format_timespan
 from loguru import logger
 from geopy.distance import distance
@@ -329,12 +330,12 @@ def ouibus_journeys(df_response, _id=0):
                                         _type=constants.TYPE_TRANSFER,
                                         label=f'Transfer at {leg.short_name_destination_seg}',
                                         distance_m=distance(leg.geoloc_destination_seg,leg.next_geoloc).m,
-                                        duration_s=(leg['next_departure'] - leg['arrival_seg']).seconds,
+                                        duration_s=(leg['ngext_departure'] - leg['arrival_seg']).seconds,
                                         price_EUR=[0],
-                                        departure_point=leg.geoloc_destination_seg,
-                                        arrival_point=leg.next_geoloc,
-                                        departure_stop_name=leg.short_name_destination_seg,
-                                        arrival_stop_name=leg.next_stop_name,
+                                        departure_point=protect_value(leg.geoloc_destination_seg),
+                                        arrival_point=protect_value(leg.next_geoloc),
+                                        departure_stop_name=protect_value(leg.short_name_destination_seg),
+                                        arrival_stop_name=protect_value(leg.next_stop_name),
                                         gCO2=0,
                                         geojson=[],
                                         )
@@ -357,6 +358,15 @@ def ouibus_journeys(df_response, _id=0):
 
     return lst_journeys
 
+def protect_value(value):
+    """
+        This function protects against NaN value
+    """
+
+    if not math.isnan(value):
+        return value
+
+    return 0
 
 def main(query):
     """
