@@ -1,5 +1,6 @@
 .idea/
 app/tmw_api_keys.py
+api/app/tmw_api_keys.py
 test_apis/
 __pycache__/
 .ipynb_checkpoints/
