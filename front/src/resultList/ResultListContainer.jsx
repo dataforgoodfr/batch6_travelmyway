@@ -28,7 +28,7 @@ const addEcoComparisonToJourney = journeys => {
 }
 
 const ResultListContainer = ({ results, setResults }) => {
-  const { journeys, isLoading } = results;
+  const { journeys, isLoading } = results
   const sortedJourneys = addEcoComparisonToJourney(sortByCO2(journeys))
 
   return (

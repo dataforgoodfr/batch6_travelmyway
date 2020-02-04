@@ -23,7 +23,7 @@ const SearchContainer = ({ setResults, results }) => {
 
   const submitForm = async () => {
     const formatedDate = startDate.toISOString()
-      
+
     setResults({ ...results, isLoading: true })
 
     const result = await getJourney(
@@ -33,11 +33,10 @@ const SearchContainer = ({ setResults, results }) => {
       arrivalCoordinates.lng,
       formatedDate
     )
-      
+
     // console.log('⬇⬇⬇ call API ⬇⬇⬇')
     // console.log('----------- beep boop', result.data)
-    setResults({ journeys: result, isLoading: false })
-
+    setResults({ journeys: result.data, isLoading: false })
   }
 
   return (
