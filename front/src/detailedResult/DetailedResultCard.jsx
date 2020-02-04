@@ -1,13 +1,12 @@
 import React from 'react'
 import { Grid } from 'semantic-ui-react'
-import { getDurationFromSeconds, getTimeFromDate } from '../journey.utils'
-import { getPrice } from '../../../batch6_travelmyway/front/src/journey.utils'
+import { getDurationFromSeconds, getTimeFromDate, getPrice } from '../journey.utils'
 
 const DetailedResultCard = ({ selectedJourney }) => {
   const departureHour = getTimeFromDate(selectedJourney.departure_date)
   const arrivalHour = getTimeFromDate(selectedJourney.arrival_date)
   const totalDuration = getDurationFromSeconds(selectedJourney.total_duration)
-  
+
   return (
     <div className="detailed-result-card">
       <Grid>
